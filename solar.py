@@ -1,18 +1,26 @@
+# ====== Imports ======
 from direct.showbase.ShowBase import ShowBase
 from direct.task import Task
-from panda3d.core import ClockObject, WindowProperties, AmbientLight, DirectionalLight, Vec4, Vec3, LineSegs, PointLight
-globalClock = ClockObject.getGlobalClock()
 from direct.gui.OnscreenText import OnscreenText
+from panda3d.core import ClockObject, WindowProperties, AmbientLight, DirectionalLight, Vec4, Vec3, LineSegs, PointLight
 import yaml, datetime, math, os
-import controles  # Carrega os controles e simulation_state
 from datetime import timedelta
+import controles  # Carrega os controles e simulation_state
 
-# Carregar dados dos astros a partir de corpos.yaml
+# ====== Variáveis Globais e Constantes ======
+globalClock = ClockObject.getGlobalClock()
+ref_date = datetime.datetime(2000, 1, 1, 12, 0, 0)
+sim_days = (datetime.datetime.now() - ref_date).total_seconds() / 86400
+REAL_SCALE_FACTOR = 1e-6         # converte valor de raio real para unidades visíveis no Panda3D
+ZOOM_THRESHOLD = 5.0             # Zoom threshold para visualização
+SIZE_MULTIPLIER = 100.0          # Exagera os tamanhos para visualização
+AU = 1.496e11                    # metros por unidade astronômica
+MODEL_SIZE_FACTOR = 2e-10        # reduzido para diminuir o tamanho do modelo
+
+# ====== Carregar Dados ======
 caminho_corpos = os.path.join(os.path.dirname(__file__), 'parametros', 'corpos.yaml')
-with open(caminho_corpos, 'r', encoding='utf8') as f:  # especificar encoding
+with open(caminho_corpos, 'r', encoding='utf8') as f:
     astros = yaml.safe_load(f)
-
-# Mapear luas ao corpo parent (usando as chaves em letras minúsculas)
 parent_moons = {
     'lua':     'terra',
     'io':      'jupiter',
@@ -25,91 +33,59 @@ parent_moons = {
     'oberon':  'urano',
 }
 
-# Data de referência (J2000)
-ref_date = datetime.datetime(2000, 1, 1, 12, 0, 0)
-# Inicializar tempo de simulação (em dias) com o tempo real decorrido desde ref_date
-sim_days = (datetime.datetime.now() - ref_date).total_seconds() / 86400
-
-# Constante de conversão para escala real (ajuste conforme necessário)
-REAL_SCALE_FACTOR = 1e-6  # converte valor de raio real para unidades visíveis no Panda3D
-
-# Zoom threshold para mostrar corpos em escala real
-ZOOM_THRESHOLD = 5.0
-
-# Defina escalas separadas
-# ORBIT_SCALE converte unidades de "a" de órbita para unidades da cena
-# SIZE_MULTIPLIER exagera os tamanhos dos corpos para visualização
-SIZE_MULTIPLIER = 100.0
-
-# Updated constants:
-AU = 1.496e11               # meters per astronomical unit
-MODEL_SIZE_FACTOR = 2e-10    # reduzido em 10x para diminuir o tamanho do modelo
-
+# ====== Funções Auxiliares ======
 def parse_number(val):
-    # Converte valores numéricos ou expressões (como "27.3/365.25") para float.
     if isinstance(val, (int, float)):
         return float(val)
     try:
-        # Avaliação segura sem __builtins__
         return float(eval(val, {"__builtins__": None}, {}))
     except Exception:
-        return float(val)  # Fallback
+        return float(val)
 
+# ====== Classe Principal ======
 class SistemaSolar(ShowBase):
     def __init__(self):
         ShowBase.__init__(self)
-        # Configurar tamanho da janela
+        # Configurar janela e câmera
         props = WindowProperties()
         props.setSize(1600, 900)
         self.win.requestProperties(props)
-        
         self.setBackgroundColor(0, 0, 0, 1)
-        
-        # Registrar controles
         controles.register_controls(self)
-        
-        # Variáveis para transições suaves
-        self.camera_target_pos = self.camera.getPos()
-        self.camera_current_pos = self.camera.getPos()
-        self.zoom_target = controles.simulation_state['zoom']
-        self.zoom_current = controles.simulation_state['zoom']
-        self.transition_speed = 5.0  # Velocidade de transição
-        
-        # Configurar câmera e iluminação
         self.disableMouse()
-        # Ajusta os planos de recorte da câmera para evitar clipping em aproximações extremas
         lens = self.cam.node().getLens()
-        lens.setNear(0.01)    # Valor menor para permitir aproximações mais intensas
-        lens.setFar(1e12)     # Valor maior para permitir visualizações à distância
-        
+        lens.setNear(0.01)
+        lens.setFar(1e12)
+        # Iluminação
         ambient = AmbientLight("ambient")
         ambient.setColor(Vec4(0.2, 0.2, 0.2, 1))
         directional = DirectionalLight("directional")
         directional.setDirection(Vec3(1, 1, -1))
         self.render.setLight(self.render.attachNewNode(ambient))
         self.render.setLight(self.render.attachNewNode(directional))
-        
-        # Criar nodes dos corpos a partir dos modelos (esfera padrão)
+        # Inicializa variáveis de transição da câmera
+        self.camera_target_pos = self.camera.getPos()
+        self.camera_current_pos = self.camera.getPos()
+        self.zoom_target = controles.simulation_state['zoom']
+        self.zoom_current = controles.simulation_state['zoom']
+        self.transition_speed = 5.0
+        # Criação dos nós e configuração dos corpos
         self.nodes = {}
         for key, astro in astros.items():
             kl = key.lower()
             node = self.loader.loadModel("models/misc/sphere")
             node.reparentTo(self.render)
-            # Escala inicial padrão (será atualizada em cada frame)
             if kl == 'sol':
                 node.setScale(2.0)
-                # Adicionar brilho ao Sol
                 pl = PointLight("sol_brilho")
-                pl.setColor(Vec4(2, 2, 1.5, 1))  # Aumentar a intensidade da cor
-                pl.setAttenuation((0.1, 0.04, 0.0))  # Ajustar atenuação para brilho mais forte
+                pl.setColor(Vec4(2, 2, 1.5, 1))
+                pl.setAttenuation((0.1, 0.04, 0.0))
                 plnp = node.attachNewNode(pl)
                 self.render.setLight(plnp)
-                
-                # Adicionar efeito de halo ao Sol
                 halo = self.loader.loadModel("models/misc/sphere")
                 halo.reparentTo(node)
-                halo.setScale(3.0)  # Escala maior para o halo
-                halo.setColor(Vec4(1, 1, 0.8, 0.5))  # Cor amarela clara com transparência
+                halo.setScale(3.0)
+                halo.setColor(Vec4(1, 1, 0.8, 0.5))
                 halo.setTransparency(True)
             elif 'orbital' in astro and kl not in parent_moons:
                 node.setScale(0.5)
@@ -117,35 +93,27 @@ class SistemaSolar(ShowBase):
                 node.setScale(0.2)
             else:
                 node.setScale(0.3)
-            # Definir cor do modelo
             cor = astro.get('cor', '#ffffff')
             r = int(cor.lstrip('#')[0:2], 16) / 255.0
             g = int(cor.lstrip('#')[2:4], 16) / 255.0
             b = int(cor.lstrip('#')[4:6], 16) / 255.0
             node.setColor(r, g, b, 1)
             self.nodes[kl] = node
-        
         # Textos informativos
         self.text_date = OnscreenText(text="", pos=(-1.3, 0.9), scale=0.05)
         self.text_speed = OnscreenText(text="", pos=(-1.3, -0.95), scale=0.05)
         self.text_zoom = OnscreenText(text="", pos=(1.0, -0.95), scale=0.05)
-        self.text_focus = OnscreenText(text="", pos=(0, 0.85), scale=0.07, fg=(1,1,1,1), align=0)  # centralizado
-        
-        # Calcular posição inicial dos corpos para focar na Terra
+        self.text_focus = OnscreenText(text="", pos=(0, 0.85), scale=0.07, fg=(1,1,1,1), align=0)
+        # Posicionar a câmera inicialmente centrada na Terra
         positions = self.calcular_posicoes()
         terra_pos = positions.get('terra', Vec3(0,0,0))
-        # Posicionar câmera inicialmente centrada na Terra
         self.camera.setPos(terra_pos.x, terra_pos.y - 30, terra_pos.z + 20)
         self.camera.lookAt(terra_pos)
-        
-        # Agendar a atualização da simulação
         self.taskMgr.add(self.update_simulation, "update_simulation")
-        
+    
     def calcular_posicoes(self):
-        """Calcula as posições dos corpos com base em sim_days usando valores reais escalados."""
         center = Vec3(0, 0, 0)
         pos = {}
-        # Para Sol e planetas:
         for key, astro in astros.items():
             kl = key.lower()
             if kl == 'sol':
@@ -154,11 +122,10 @@ class SistemaSolar(ShowBase):
                 orb = astro['orbital']
                 period_days = parse_number(orb['T']) * 365.25
                 theta = 2 * math.pi * ((sim_days % period_days) / period_days)
-                a = orb['a']  # in AU
+                a = orb['a']
                 e = orb.get('e', 0)
                 r = a * AU * MODEL_SIZE_FACTOR * (1 - e**2) / (1 + e * math.cos(theta))
                 pos[kl] = Vec3(math.cos(theta)*r, math.sin(theta)*r, 0)
-        # Para luas:
         for key, astro in astros.items():
             kl = key.lower()
             if 'orbital' in astro and kl in parent_moons:
@@ -180,7 +147,6 @@ class SistemaSolar(ShowBase):
         global sim_days
         sim_days += (dt / 86400) * controles.simulation_state['speed']
         positions = self.calcular_posicoes()
-        
         center = Vec3(0, 0, 0)
         target = controles.simulation_state['target']
         target_pos = positions.get(target, center)
@@ -188,18 +154,14 @@ class SistemaSolar(ShowBase):
         if zoom < 0.02:
             controles.simulation_state['zoom'] = 0.02
             zoom = 0.02
-        
-        # Atualizar a posição da câmera e o zoom suavemente
         self.camera_target_pos = target_pos
         self.zoom_target = zoom
         self.camera_current_pos += (self.camera_target_pos - self.camera_current_pos) * min(self.transition_speed * dt, 1)
         self.zoom_current += (self.zoom_target - self.zoom_current) * min(self.transition_speed * dt, 1)
-        
-        # Desenhar órbitas (planetas e luas) centralizando no foco
         if hasattr(self, 'orbit_lines'):
             self.orbit_lines.removeNode()
         ls = LineSegs()
-        ls.setThickness(1.0)  # usar espessura fixa
+        ls.setThickness(1.0)
         num_segments = 100
         for key, astro in astros.items():
             kl = key.lower()
@@ -218,56 +180,41 @@ class SistemaSolar(ShowBase):
                 r = a * AU * MODEL_SIZE_FACTOR * (1 - e**2) / (1 + e * math.cos(theta_seg))
                 x = math.cos(theta_seg) * r
                 y = math.sin(theta_seg) * r
-                if key in parent_moons and self.zoom_current >= 2.0:
+                if key in parent_moons:
                     parent_pos = positions[parent_moons[key]]
                     x_rel = x + parent_pos.x - self.camera_current_pos.x
                     y_rel = y + parent_pos.y - self.camera_current_pos.y
-                elif key not in parent_moons and self.zoom_current < 70.0:
+                else:
                     x_rel = x - self.camera_current_pos.x
                     y_rel = y - self.camera_current_pos.y
-                else:
-                    continue
                 if i == 0:
                     ls.moveTo(x_rel, y_rel, 0)
                 else:
                     ls.drawTo(x_rel, y_rel, 0)
         self.orbit_lines = self.render.attachNewNode(ls.create())
-        
         for key, node in self.nodes.items():
             pos = positions.get(key, center)
-            # Exibir luas somente com zoom >= 2.0
-            if key in parent_moons:
-                if self.zoom_current < 2.0:
-                    node.hide()
-                    continue
-                else:
-                    node.show()
             if key in astros and 'raio' in astros[key]:
                 real_scale = float(astros[key]['raio']) * MODEL_SIZE_FACTOR
                 node.setScale(real_scale)
             else:
                 node.setScale(0.2)
-            # Removido o zoom dos cálculos de posição para manter as proporções reais
             if key == 'sol':
                 node.setPos(center - self.camera_current_pos)
             else:
                 node.setPos(pos - self.camera_current_pos)
-        
-        # Atualização da câmera permanece usando zoom para ajustar a visão
         CAMERA_BASE_ALTITUDE = 100.0
         new_altitude = CAMERA_BASE_ALTITUDE / self.zoom_current
         self.camera.setPos(0, 0, new_altitude)
         self.camera.lookAt(0, 0, 0)
-        
-        # Atualizar textos
         sim_datetime = ref_date + timedelta(days=sim_days)
         self.text_date.setText(sim_datetime.strftime("%d/%m/%Y, %H:%M:%S"))
         self.text_speed.setText(f"Velocidade: x{controles.simulation_state['speed']:.1f}")
         self.text_zoom.setText(f"Zoom: x{self.zoom_current:.1f}")
         astro_focus = astros.get(target.lower(), {"nome": target})
         self.text_focus.setText(astro_focus["nome"])
-        
         return Task.cont
 
+# ====== Ponto de Entrada ======
 app = SistemaSolar()
 app.run()
