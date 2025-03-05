@@ -122,26 +122,36 @@ class SistemaSolar(ShowBase):
             kl = key.lower()
             if kl == 'sol':
                 pos[kl] = center
-            elif 'orbital' in astro and kl not in parent_moons:
+            elif 'orbital' in astro:
                 orb = astro['orbital']
                 period_days = parse_number(orb['T']) * 365.25
-                theta = 2 * math.pi * ((sim_days % period_days) / period_days)
-                a = orb['a']
+                # Base para a anomalia: evolucionar com o tempo.
+                theta_base = 2 * math.pi * ((sim_days % period_days) / period_days)
+                # Extraindo parâmetros (convertendo de graus para radianos)
                 e = orb.get('e', 0)
-                r = a * AU * MODEL_SIZE_FACTOR * (1 - e**2) / (1 + e * math.cos(theta))
-                pos[kl] = Vec3(math.cos(theta)*r, math.sin(theta)*r, 0)
+                a = orb['a']
+                ω_rad = math.radians(orb.get('ω', 0))
+                i_rad = math.radians(orb.get('i', 0))
+                Ω_rad = math.radians(orb.get('Ω', 0))
+                # Define a anomalia verdadeira usando a base e o argumento do periastro.
+                f = theta_base + ω_rad
+                # Cálculo da distância usando a equação da órbita com excentricidade.
+                r = a * AU * MODEL_SIZE_FACTOR * (1 - e**2) / (1 + e * math.cos(f))
+                # Coordenadas na órbita (plano orbital):
+                x_orb = r * math.cos(f)
+                y_orb = r * math.sin(f)
+                # Transformação para coordenadas no espaço (considerando inclinação e nó ascendente):
+                x = x_orb * math.cos(Ω_rad) - y_orb * math.sin(Ω_rad) * math.cos(i_rad)
+                y = x_orb * math.sin(Ω_rad) + y_orb * math.cos(Ω_rad) * math.cos(i_rad)
+                z = y_orb * math.sin(i_rad)
+                pos[kl] = Vec3(x, y, z)
+        # Para corpos orbitais que são luas, adicionar a posição do corpo pai:
         for key, astro in astros.items():
             kl = key.lower()
             if 'orbital' in astro and kl in parent_moons:
                 parent_key = parent_moons.get(kl)
                 if parent_key and parent_key in pos:
-                    orb = astro['orbital']
-                    period_days = parse_number(orb['T']) * 365.25
-                    theta = 2 * math.pi * ((sim_days % period_days) / period_days)
-                    a = orb['a']
-                    e = orb.get('e', 0)
-                    r = a * AU * MODEL_SIZE_FACTOR * (1 - e**2) / (1 + e * math.cos(theta))
-                    pos[kl] = pos[parent_key] + Vec3(math.cos(theta)*r, math.sin(theta)*r, 0)
+                    pos[kl] = pos[parent_key] + pos[kl]
                 else:
                     pos[kl] = center
         return pos
@@ -188,40 +198,113 @@ class SistemaSolar(ShowBase):
         # if self.zoom_current > <algum limiar>:
         #     trocar para modelo de alta resolução
 
+        # Atualização dos nós das órbitas e demais elementos
         if hasattr(self, 'orbit_lines'):
             self.orbit_lines.removeNode()
         ls = LineSegs()
         ls.setThickness(1.0)
-        num_segments = 100
+        num_segments = 150
         for key, astro in astros.items():
             kl = key.lower()
             if kl == 'sol' or ('orbital' not in astro):
                 continue
             orb = astro['orbital']
             period_days = parse_number(orb['T']) * 365.25
-            theta_cur = 2 * math.pi * ((sim_days % period_days) / period_days)
-            a = orb['a']
+            θ_base = 2 * math.pi * ((sim_days % period_days) / period_days)
             e = orb.get('e', 0)
-            for i in range(num_segments + 1):
-                theta_seg = theta_cur + 2 * math.pi * (i / num_segments)
-                diff = (theta_seg - theta_cur) % (2 * math.pi)
-                intensity = 0.05 + 0.45 * (diff / (2 * math.pi))
-                ls.setColor(intensity, intensity, intensity, 1)
-                r = a * AU * MODEL_SIZE_FACTOR * (1 - e**2) / (1 + e * math.cos(theta_seg))
-                x = math.cos(theta_seg) * r
-                y = math.sin(theta_seg) * r
+            a = orb['a']
+            ω_rad = math.radians(orb.get('ω', 0))
+            i_rad = math.radians(orb.get('i', 0))
+            Ω_rad = math.radians(orb.get('Ω', 0))
+            # Desenho da órbita usando gradiente
+            for j in range(num_segments + 1):
+                f = (θ_base + 2 * math.pi * (j / num_segments)) + ω_rad
+                # Recalcula a distância r para este ângulo
+                r = a * AU * MODEL_SIZE_FACTOR * (1 - e**2) / (1 + e * math.cos(f))
+                # Conversão para coordenadas 3D
+                x_orb = r * math.cos(f)
+                y_orb = r * math.sin(f)
+                x = x_orb * math.cos(Ω_rad) - y_orb * math.sin(Ω_rad) * math.cos(i_rad)
+                y = x_orb * math.sin(Ω_rad) + y_orb * math.cos(Ω_rad) * math.cos(i_rad)
+                z = y_orb * math.sin(i_rad)
+                pt = Vec3(x, y, z)
                 if key in parent_moons:
                     parent_pos = positions[parent_moons[key]]
-                    x_rel = x + parent_pos.x - self.camera_current_pos.x
-                    y_rel = y + parent_pos.y - self.camera_current_pos.y
+                    pt = parent_pos + pt
+                pt_rel = pt - self.camera_current_pos
+                # Cálculo do gradiente: a intensidade varia com a diferença angular desde o início
+                diff = (f - (θ_base + ω_rad)) % (2 * math.pi)
+                intensity = 0.05 + 0.45 * (diff / (2 * math.pi))
+                ls.setColor(intensity, intensity, intensity, 1)
+                if j == 0:
+                    ls.moveTo(pt_rel)
                 else:
-                    x_rel = x - self.camera_current_pos.x
-                    y_rel = y - self.camera_current_pos.y
-                if i == 0:
-                    ls.moveTo(x_rel, y_rel, 0)
-                else:
-                    ls.drawTo(x_rel, y_rel, 0)
+                    ls.drawTo(pt_rel)
         self.orbit_lines = self.render.attachNewNode(ls.create())
+
+        # Atualiza marcadores de periastro ("P") e apoastro ("A") com tamanho fixo na tela
+        from panda3d.core import TextNode
+        if hasattr(self, 'orbit_markers') and self.orbit_markers is not None:
+            self.orbit_markers.removeNode()
+            self.orbit_markers = None
+        self.orbit_markers = self.render.attachNewNode("orbit_markers")
+        marker_scale = 0.7 / self.zoom_current
+        for key, astro in astros.items():
+            kl = key.lower()
+            if kl == 'sol' or ('orbital' not in astro):
+                continue
+            orb = astro['orbital']
+            a = orb['a']
+            e = orb.get('e', 0)
+            ω_rad = math.radians(orb.get('ω', 0))
+            i_rad = math.radians(orb.get('i', 0))
+            Ω_rad = math.radians(orb.get('Ω', 0))
+            # Centro da órbita (para luas, soma com posição do pai)
+            if key in parent_moons:
+                center_orbit = positions.get(parent_moons[key], Vec3(0, 0, 0))
+            else:
+                center_orbit = Vec3(0, 0, 0)
+            # Use excentricidade efetiva mínima para separar os pontos mesmo em órbitas circulares
+            effective_e = e if e >= 0.01 else 0.01
+            r_peri = a * AU * MODEL_SIZE_FACTOR * (1 - effective_e)
+            r_apo  = a * AU * MODEL_SIZE_FACTOR * (1 + effective_e)
+            # Posições na órbita (assumindo órbita alinhada com o eixo X)
+            peri_pos_local = Vec3(r_peri, 0, 0)
+            apo_pos_local  = Vec3(-r_apo, 0, 0)
+            # Rotacione estas posições para levar em conta ω, i e Ω:
+            def rotate(vec):
+                x = vec[0]
+                y = vec[1]
+                z = vec[2]
+                x1 = x * math.cos(Ω_rad) - y * math.sin(Ω_rad)
+                y1 = x * math.sin(Ω_rad) + y * math.cos(Ω_rad)
+                z1 = z
+                # Aplicar inclinação i (rotaciona em torno de X)
+                y2 = y1 * math.cos(i_rad) - z1 * math.sin(i_rad)
+                z2 = y1 * math.sin(i_rad) + z1 * math.cos(i_rad)
+                # Aplicar o argumento do periastro ω
+                x3 = x1 * math.cos(ω_rad) - y2 * math.sin(ω_rad)
+                y3 = x1 * math.sin(ω_rad) + y2 * math.cos(ω_rad)
+                return Vec3(x3, y3, z2)
+            peri_pos = center_orbit + rotate(peri_pos_local)
+            apo_pos  = center_orbit + rotate(apo_pos_local)
+            # Cria marcador de periastro "P"
+            tn_p = TextNode('peri')
+            tn_p.setText("P")
+            tn_p.setTextColor(1, 1, 1, 1)
+            peri_np = self.orbit_markers.attachNewNode(tn_p)
+            peri_np.setScale(marker_scale)
+            peri_np.setBillboardPointEye()
+            peri_np.setPos(peri_pos - self.camera_current_pos)
+            # Cria marcador de apoastro "A"
+            tn_a = TextNode('apo')
+            tn_a.setText("A")
+            tn_a.setTextColor(1, 1, 1, 1)
+            apo_np = self.orbit_markers.attachNewNode(tn_a)
+            apo_np.setScale(marker_scale)
+            apo_np.setBillboardPointEye()
+            apo_np.setPos(apo_pos - self.camera_current_pos)
+
         for key, node in self.nodes.items():
             pos = positions.get(key, center)
             if key in astros and 'raio' in astros[key]:
