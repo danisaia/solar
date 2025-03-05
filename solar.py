@@ -1,6 +1,6 @@
 from direct.showbase.ShowBase import ShowBase
 from direct.task import Task
-from panda3d.core import ClockObject, WindowProperties, AmbientLight, DirectionalLight, Vec4, Vec3, LineSegs
+from panda3d.core import ClockObject, WindowProperties, AmbientLight, DirectionalLight, Vec4, Vec3, LineSegs, PointLight
 globalClock = ClockObject.getGlobalClock()
 from direct.gui.OnscreenText import OnscreenText
 import yaml, datetime, math, os
@@ -63,7 +63,6 @@ class SistemaSolar(ShowBase):
         props.setSize(1600, 900)
         self.win.requestProperties(props)
         
-        # Definir cor de fundo para preto
         self.setBackgroundColor(0, 0, 0, 1)
         
         # Registrar controles
@@ -71,6 +70,11 @@ class SistemaSolar(ShowBase):
         
         # Configurar câmera e iluminação
         self.disableMouse()
+        # Ajusta os planos de recorte da câmera para evitar clipping em aproximações extremas
+        lens = self.cam.node().getLens()
+        lens.setNear(0.01)    # Valor menor para permitir aproximações mais intensas
+        lens.setFar(1e12)     # Valor maior para permitir visualizações à distância
+        
         ambient = AmbientLight("ambient")
         ambient.setColor(Vec4(0.2, 0.2, 0.2, 1))
         directional = DirectionalLight("directional")
@@ -87,6 +91,19 @@ class SistemaSolar(ShowBase):
             # Escala inicial padrão (será atualizada em cada frame)
             if kl == 'sol':
                 node.setScale(2.0)
+                # Adicionar brilho ao Sol
+                pl = PointLight("sol_brilho")
+                pl.setColor(Vec4(2, 2, 1.5, 1))  # Aumentar a intensidade da cor
+                pl.setAttenuation((0.1, 0.04, 0.0))  # Ajustar atenuação para brilho mais forte
+                plnp = node.attachNewNode(pl)
+                self.render.setLight(plnp)
+                
+                # Adicionar efeito de halo ao Sol
+                halo = self.loader.loadModel("models/misc/sphere")
+                halo.reparentTo(node)
+                halo.setScale(3.0)  # Escala maior para o halo
+                halo.setColor(Vec4(1, 1, 0.8, 0.5))  # Cor amarela clara com transparência
+                halo.setTransparency(True)
             elif 'orbital' in astro and kl not in parent_moons:
                 node.setScale(0.5)
             elif 'orbital' in astro and kl in parent_moons:
@@ -188,12 +205,11 @@ class SistemaSolar(ShowBase):
                 r = a * AU * MODEL_SIZE_FACTOR * (1 - e**2) / (1 + e * math.cos(theta_seg))
                 x = math.cos(theta_seg) * r
                 y = math.sin(theta_seg) * r
-                # Removido o zoom da posição para preservar a escala real
                 if key in parent_moons and zoom >= 2.0:
                     parent_pos = positions[parent_moons[key]]
                     x_rel = x + parent_pos.x - target_pos.x
                     y_rel = y + parent_pos.y - target_pos.y
-                elif key not in parent_moons and zoom < 3.0:
+                elif key not in parent_moons and zoom < 70.0:
                     x_rel = x - target_pos.x
                     y_rel = y - target_pos.y
                 else:
