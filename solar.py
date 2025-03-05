@@ -39,13 +39,11 @@ ZOOM_THRESHOLD = 5.0
 # Defina escalas separadas
 # ORBIT_SCALE converte unidades de "a" de órbita para unidades da cena
 # SIZE_MULTIPLIER exagera os tamanhos dos corpos para visualização
-ORBIT_SCALE = 100.0
 SIZE_MULTIPLIER = 100.0
 
 # Updated constants:
 AU = 1.496e11               # meters per astronomical unit
-MODEL_SIZE_FACTOR = 7e-8    # unified scale factor for all body sizes
-POSITION_SCALE = 1e-8       # scale factor to convert AU to model units
+MODEL_SIZE_FACTOR = 2e-10    # reduzido em 10x para diminuir o tamanho do modelo
 
 def parse_number(val):
     # Converte valores numéricos ou expressões (como "27.3/365.25") para float.
@@ -79,9 +77,6 @@ class SistemaSolar(ShowBase):
         directional.setDirection(Vec3(1, 1, -1))
         self.render.setLight(self.render.attachNewNode(ambient))
         self.render.setLight(self.render.attachNewNode(directional))
-        
-        # Alterar a escala base para posições usando ORBIT_SCALE
-        self.orbit_scale = ORBIT_SCALE
         
         # Criar nodes dos corpos a partir dos modelos (esfera padrão)
         self.nodes = {}
@@ -137,7 +132,7 @@ class SistemaSolar(ShowBase):
                 theta = 2 * math.pi * ((sim_days % period_days) / period_days)
                 a = orb['a']  # in AU
                 e = orb.get('e', 0)
-                r = a * AU * POSITION_SCALE * (1 - e**2) / (1 + e * math.cos(theta))
+                r = a * AU * MODEL_SIZE_FACTOR * (1 - e**2) / (1 + e * math.cos(theta))
                 pos[kl] = Vec3(math.cos(theta)*r, math.sin(theta)*r, 0)
         # Para luas:
         for key, astro in astros.items():
@@ -150,7 +145,7 @@ class SistemaSolar(ShowBase):
                     theta = 2 * math.pi * ((sim_days % period_days) / period_days)
                     a = orb['a']
                     e = orb.get('e', 0)
-                    r = a * AU * POSITION_SCALE * (1 - e**2) / (1 + e * math.cos(theta))
+                    r = a * AU * MODEL_SIZE_FACTOR * (1 - e**2) / (1 + e * math.cos(theta))
                     pos[kl] = pos[parent_key] + Vec3(math.cos(theta)*r, math.sin(theta)*r, 0)
                 else:
                     pos[kl] = center
@@ -174,9 +169,8 @@ class SistemaSolar(ShowBase):
         if hasattr(self, 'orbit_lines'):
             self.orbit_lines.removeNode()
         ls = LineSegs()
-        ls.setThickness(1.0)
+        ls.setThickness(1.0)  # usar espessura fixa
         num_segments = 100
-        # Iterar sobre planetas e luas
         for key, astro in astros.items():
             kl = key.lower()
             if kl == 'sol' or ('orbital' not in astro):
@@ -187,21 +181,21 @@ class SistemaSolar(ShowBase):
             a = orb['a']
             e = orb.get('e', 0)
             for i in range(num_segments + 1):
-                # Agora theta_seg é calculado relativo a theta_cur
                 theta_seg = theta_cur + 2 * math.pi * (i / num_segments)
-                diff = (theta_seg - theta_cur) % (2 * math.pi)  # igual a 2π*(i/num_segments)
-                intensity = 0.05 + 0.45 * (diff / (2 * math.pi))  # Ajuste para escurecer ainda mais a elipse
+                diff = (theta_seg - theta_cur) % (2 * math.pi)
+                intensity = 0.05 + 0.45 * (diff / (2 * math.pi))
                 ls.setColor(intensity, intensity, intensity, 1)
-                r = a * AU * POSITION_SCALE  * (1 - e**2) / (1 + e * math.cos(theta_seg))
+                r = a * AU * MODEL_SIZE_FACTOR * (1 - e**2) / (1 + e * math.cos(theta_seg))
                 x = math.cos(theta_seg) * r
                 y = math.sin(theta_seg) * r
+                # Removido o zoom da posição para preservar a escala real
                 if key in parent_moons and zoom >= 2.0:
                     parent_pos = positions[parent_moons[key]]
-                    x_rel = (x + parent_pos.x - target_pos.x) * zoom
-                    y_rel = (y + parent_pos.y - target_pos.y) * zoom
+                    x_rel = x + parent_pos.x - target_pos.x
+                    y_rel = y + parent_pos.y - target_pos.y
                 elif key not in parent_moons and zoom < 3.0:
-                    x_rel = (x - target_pos.x) * zoom
-                    y_rel = (y - target_pos.y) * zoom
+                    x_rel = x - target_pos.x
+                    y_rel = y - target_pos.y
                 else:
                     continue
                 if i == 0:
@@ -219,23 +213,18 @@ class SistemaSolar(ShowBase):
                     continue
                 else:
                     node.show()
-            
-            # Calcular o tamanho da esfera com base no valor real do raio
             if key in astros and 'raio' in astros[key]:
                 real_scale = float(astros[key]['raio']) * MODEL_SIZE_FACTOR
                 node.setScale(real_scale)
             else:
                 node.setScale(0.2)
-            
-            # Posicionar os corpos relativos ao corpo focado
+            # Removido o zoom dos cálculos de posição para manter as proporções reais
             if key == 'sol':
-                # O Sol é posicionado de acordo com sua posição real (center)
-                node.setPos((center - target_pos) * zoom)
+                node.setPos(center - target_pos)
             else:
-                rel = (pos - target_pos) * zoom
-                node.setPos(rel)
+                node.setPos(pos - target_pos)
         
-        # Atualização da câmera para visão top-down com zoom dinâmico
+        # Atualização da câmera permanece usando zoom para ajustar a visão
         CAMERA_BASE_ALTITUDE = 100.0
         new_altitude = CAMERA_BASE_ALTITUDE / zoom
         self.camera.setPos(0, 0, new_altitude)
