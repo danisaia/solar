@@ -80,11 +80,19 @@ def diminuir_velocidade():
     print("Velocidade diminuída para:", simulation_state['speed'])
 
 def aumentar_zoom():
-    simulation_state['zoom'] *= 1.2
+    simulation_state['zoom'] *= 2
+    print("Zoom aumentado para:", simulation_state['zoom'])
+
+def aumentar_zoom_curto():
+    simulation_state['zoom'] *= 1.1
     print("Zoom aumentado para:", simulation_state['zoom'])
 
 def diminuir_zoom():
-    simulation_state['zoom'] /= 1.2
+    simulation_state['zoom'] /= 2
+    print("Zoom diminuído para:", simulation_state['zoom'])
+
+def diminuir_zoom_curto():
+    simulation_state['zoom'] /= 1.1
     print("Zoom diminuído para:", simulation_state['zoom'])
 
 def resetar_zoom():
@@ -105,6 +113,8 @@ def register_controls(base):
     base.accept('r', aumentar_zoom)
     base.accept('f', diminuir_zoom)
     base.accept('v', resetar_zoom)
+    base.accept('shift-r', aumentar_zoom_curto)  # Novo comando para aumentar_zoom_curto
+    base.accept('shift-f', diminuir_zoom_curto)  # Novo comando para diminuir_zoom_curto
 
 if __name__ == '__main__':
     # Exemplo de teste: a função handle_key_event pode ser chamada no loop de eventos de solar.py.

@@ -68,6 +68,13 @@ class SistemaSolar(ShowBase):
         # Registrar controles
         controles.register_controls(self)
         
+        # Variáveis para transições suaves
+        self.camera_target_pos = self.camera.getPos()
+        self.camera_current_pos = self.camera.getPos()
+        self.zoom_target = controles.simulation_state['zoom']
+        self.zoom_current = controles.simulation_state['zoom']
+        self.transition_speed = 5.0  # Velocidade de transição
+        
         # Configurar câmera e iluminação
         self.disableMouse()
         # Ajusta os planos de recorte da câmera para evitar clipping em aproximações extremas
@@ -182,6 +189,12 @@ class SistemaSolar(ShowBase):
             controles.simulation_state['zoom'] = 0.02
             zoom = 0.02
         
+        # Atualizar a posição da câmera e o zoom suavemente
+        self.camera_target_pos = target_pos
+        self.zoom_target = zoom
+        self.camera_current_pos += (self.camera_target_pos - self.camera_current_pos) * min(self.transition_speed * dt, 1)
+        self.zoom_current += (self.zoom_target - self.zoom_current) * min(self.transition_speed * dt, 1)
+        
         # Desenhar órbitas (planetas e luas) centralizando no foco
         if hasattr(self, 'orbit_lines'):
             self.orbit_lines.removeNode()
@@ -205,13 +218,13 @@ class SistemaSolar(ShowBase):
                 r = a * AU * MODEL_SIZE_FACTOR * (1 - e**2) / (1 + e * math.cos(theta_seg))
                 x = math.cos(theta_seg) * r
                 y = math.sin(theta_seg) * r
-                if key in parent_moons and zoom >= 2.0:
+                if key in parent_moons and self.zoom_current >= 2.0:
                     parent_pos = positions[parent_moons[key]]
-                    x_rel = x + parent_pos.x - target_pos.x
-                    y_rel = y + parent_pos.y - target_pos.y
-                elif key not in parent_moons and zoom < 70.0:
-                    x_rel = x - target_pos.x
-                    y_rel = y - target_pos.y
+                    x_rel = x + parent_pos.x - self.camera_current_pos.x
+                    y_rel = y + parent_pos.y - self.camera_current_pos.y
+                elif key not in parent_moons and self.zoom_current < 70.0:
+                    x_rel = x - self.camera_current_pos.x
+                    y_rel = y - self.camera_current_pos.y
                 else:
                     continue
                 if i == 0:
@@ -224,7 +237,7 @@ class SistemaSolar(ShowBase):
             pos = positions.get(key, center)
             # Exibir luas somente com zoom >= 2.0
             if key in parent_moons:
-                if zoom < 2.0:
+                if self.zoom_current < 2.0:
                     node.hide()
                     continue
                 else:
@@ -236,13 +249,13 @@ class SistemaSolar(ShowBase):
                 node.setScale(0.2)
             # Removido o zoom dos cálculos de posição para manter as proporções reais
             if key == 'sol':
-                node.setPos(center - target_pos)
+                node.setPos(center - self.camera_current_pos)
             else:
-                node.setPos(pos - target_pos)
+                node.setPos(pos - self.camera_current_pos)
         
         # Atualização da câmera permanece usando zoom para ajustar a visão
         CAMERA_BASE_ALTITUDE = 100.0
-        new_altitude = CAMERA_BASE_ALTITUDE / zoom
+        new_altitude = CAMERA_BASE_ALTITUDE / self.zoom_current
         self.camera.setPos(0, 0, new_altitude)
         self.camera.lookAt(0, 0, 0)
         
@@ -250,7 +263,7 @@ class SistemaSolar(ShowBase):
         sim_datetime = ref_date + timedelta(days=sim_days)
         self.text_date.setText(sim_datetime.strftime("%d/%m/%Y, %H:%M:%S"))
         self.text_speed.setText(f"Velocidade: x{controles.simulation_state['speed']:.1f}")
-        self.text_zoom.setText(f"Zoom: x{zoom:.1f}")
+        self.text_zoom.setText(f"Zoom: x{self.zoom_current:.1f}")
         astro_focus = astros.get(target.lower(), {"nome": target})
         self.text_focus.setText(astro_focus["nome"])
         
