@@ -154,17 +154,30 @@ class SistemaSolar(ShowBase):
         center = Vec3(0, 0, 0)
         target = controles.simulation_state['target']
         target_pos = positions.get(target, center)
-        zoom = controles.simulation_state['zoom']
-        # Limitar os valores de zoom para evitar extremos
+        
+        # Limitar primeiro zoom mínimo (para evitar valores absurdos)
         MIN_ZOOM = 0.00002
-        MAX_ZOOM = 11.0
-        controles.simulation_state['zoom'] = max(min(zoom, MAX_ZOOM), MIN_ZOOM)
+        controles.simulation_state['zoom'] = max(controles.simulation_state['zoom'], MIN_ZOOM)
+        
+        # Defina a distância base da câmera
+        CAMERA_BASE_ALTITUDE = 100.0
+        # Calcular o tamanho do objeto focalizado
+        if target.lower() in astros and 'raio' in astros[target.lower()]:
+            target_scale = float(astros[target.lower()]['raio']) * MODEL_SIZE_FACTOR
+        else:
+            target_scale = 0.2
+        # Determinar a distância mínima desejada (por exemplo, 4 vezes o raio)
+        min_distance = 4 * target_scale
+        # Calcular o zoom máximo permitido para que a câmera não se aproxime demais
+        max_zoom_for_target = CAMERA_BASE_ALTITUDE / min_distance
+        controles.simulation_state['zoom'] = min(controles.simulation_state['zoom'], max_zoom_for_target)
         zoom = controles.simulation_state['zoom']
+        
         self.camera_target_pos = target_pos
         self.zoom_target = zoom
         self.camera_current_pos += (self.camera_target_pos - self.camera_current_pos) * min(self.transition_speed * dt, 1)
         self.zoom_current += (self.zoom_target - self.zoom_current) * min(self.transition_speed * dt, 1)
-
+        
         # Atualiza dinamicamente os planos de recorte conforme zoom
         new_near = max(self.base_near / self.zoom_current, 1e-6)
         new_far = self.base_far / self.zoom_current
@@ -220,7 +233,6 @@ class SistemaSolar(ShowBase):
                 node.setPos(center - self.camera_current_pos)
             else:
                 node.setPos(pos - self.camera_current_pos)
-        CAMERA_BASE_ALTITUDE = 100.0
         new_altitude = CAMERA_BASE_ALTITUDE / self.zoom_current
         self.camera.setPos(0, 0, new_altitude)
         self.camera.lookAt(0, 0, 0)
