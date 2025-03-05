@@ -1,0 +1,186 @@
+# Arquivo de configuração dos parâmetros dos corpos celestes do Sistema Solar
+
+###########
+# ESTRELA #
+
+sol:
+  nome: Sol
+  massa: 1.989e30
+  raio: 6.9634e8
+  cor: '#ffcc00'
+
+############
+# PLANETAS #
+
+mercurio:
+  nome: Mercúrio
+  massa: 3.285e23
+  raio: 2.4397e6
+  cor: '#b0b0b0'  # Cinza
+  orbital:
+    a: 0.39
+    T: 0.241
+    e: 0.205
+
+venus:
+  nome: Vênus
+  massa: 4.867e24
+  raio: 6.0518e6
+  cor: '#e6e6b3'  # Amarelo claro
+  orbital:
+    a: 0.72
+    T: 0.615
+    e: 0.0067
+
+terra:
+  nome: Terra
+  massa: 5.972e24
+  raio: 6.371e6
+  cor: '#2e8b57'  # Verde-azulado
+  orbital:
+    a: 1.0
+    T: 1.0
+    e: 0.0167
+
+marte:
+  nome: Marte
+  massa: 6.39e23
+  raio: 3.3895e6
+  cor: '#ff4500'  # Vermelho
+  orbital:
+    a: 1.52
+    T: 1.88
+    e: 0.0934
+
+jupiter:
+  nome: Júpiter
+  massa: 1.898e27
+  raio: 6.9911e7
+  cor: '#d2b48c'  # Bege
+  orbital:
+    a: 5.20
+    T: 11.86
+    e: 0.0489
+
+saturno:
+  nome: Saturno
+  massa: 5.683e26
+  raio: 5.8232e7
+  cor: '#f5deb3'  # Trigo
+  orbital:
+    a: 9.58
+    T: 29.46
+    e: 0.0565
+
+urano:
+  nome: Urano
+  massa: 8.681e25
+  raio: 2.5362e7
+  cor: '#afeeee'  # Azul claro
+  orbital:
+    a: 19.20
+    T: 84.0
+    e: 0.0463
+
+netuno:
+  nome: Netuno
+  massa: 1.024e26
+  raio: 2.4622e7
+  cor: '#4682b4'  # Azul
+  orbital:
+    a: 30.10
+    T: 164.8
+    e: 0.0086
+
+########
+# LUAS #
+
+lua:
+  nome: Lua
+  massa: 7.342e22
+  raio: 1.7371e6
+  cor: '#bfbfbf'  # Cinza claro
+  orbital:
+    a: 0.00257
+    T: 27.3/365.25
+    e: 0.0549
+
+io:
+  nome: Io
+  massa: 8.9319e22
+  raio: 1.8213e6
+  cor: '#ffd700'  # Dourado
+  orbital:
+    a: 0.00282
+    T: 1.769/365.25
+    e: 0.0041
+
+europa:
+  nome: Europa
+  massa: 4.7998e22
+  raio: 1.5608e6
+  cor: '#dcdcdc'  # Cinza claro
+  orbital:
+    a: 0.00448
+    T: 3.551/365.25
+    e: 0.0094
+
+ganimedes:
+  nome: Ganimedes
+  massa: 1.4819e23
+  raio: 2.6341e6
+  cor: '#a9a9a9'  # Cinza escuro
+  orbital:
+    a: 0.00716
+    T: 7.155/365.25
+    e: 0.0013
+
+calisto:
+  nome: Calisto
+  massa: 1.0759e23
+  raio: 2.403e6
+  cor: '#696969'  # Cinza
+  orbital:
+    a: 0.0126
+    T: 16.689/365.25
+    e: 0.0074
+
+tita:
+  nome: Titã
+  massa: 1.3452e23
+  raio: 2.575e6
+  cor: '#daa520'  # Ouro
+  orbital:
+    a: 0.0082
+    T: 15.945/365.25
+    e: 0.0288
+
+encelado:
+  nome: Encélado
+  massa: 1.08022e20
+  raio: 2.52e5
+  cor: '#ffffff'  # Branco
+  orbital:
+    a: 0.0014
+    T: 1.3702/365.25
+    e: 0.0047
+
+titania:
+  nome: Titânia
+  massa: 3.527e21
+  raio: 7.82e5
+  cor: '#d3d3d3'  # Cinza claro
+  orbital:
+    a: 0.00094
+    T: 8.706/365.25
+    e: 0
+
+oberon:
+  nome: Oberon
+  massa: 3.014e21
+  raio: 1.523e6
+  cor: '#a9a9a9'  # Cinza escuro
+  orbital:
+    a: 0.0012
+    T: 13.5/365.25
+    e: 0
