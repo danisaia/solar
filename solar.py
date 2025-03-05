@@ -182,6 +182,7 @@ class SistemaSolar(ShowBase):
         max_zoom_for_target = CAMERA_BASE_ALTITUDE / min_distance
         controles.simulation_state['zoom'] = min(controles.simulation_state['zoom'], max_zoom_for_target)
         zoom = controles.simulation_state['zoom']
+        MOON_ZOOM_THRESHOLD = 0.003  # somente exibe luas acima desse zoom
         
         self.camera_target_pos = target_pos
         self.zoom_target = zoom
@@ -207,6 +208,9 @@ class SistemaSolar(ShowBase):
         for key, astro in astros.items():
             kl = key.lower()
             if kl == 'sol' or ('orbital' not in astro):
+                continue
+            # Se for lua e zoom abaixo do limiar, pule
+            if kl in parent_moons and zoom < MOON_ZOOM_THRESHOLD:
                 continue
             orb = astro['orbital']
             period_days = parse_number(orb['T']) * 365.25
@@ -253,6 +257,8 @@ class SistemaSolar(ShowBase):
             kl = key.lower()
             if kl == 'sol' or ('orbital' not in astro):
                 continue
+            if kl in parent_moons and zoom < MOON_ZOOM_THRESHOLD:
+                continue
             orb = astro['orbital']
             a = orb['a']
             e = orb.get('e', 0)
@@ -264,30 +270,28 @@ class SistemaSolar(ShowBase):
                 center_orbit = positions.get(parent_moons[key], Vec3(0, 0, 0))
             else:
                 center_orbit = Vec3(0, 0, 0)
-            # Use excentricidade efetiva mínima para separar os pontos mesmo em órbitas circulares
-            effective_e = e if e >= 0.01 else 0.01
-            r_peri = a * AU * MODEL_SIZE_FACTOR * (1 - effective_e)
-            r_apo  = a * AU * MODEL_SIZE_FACTOR * (1 + effective_e)
-            # Posições na órbita (assumindo órbita alinhada com o eixo X)
+            # Calcula os pontos exatos de periastro e apoastro
+            r_peri = a * AU * MODEL_SIZE_FACTOR * (1 - e)
+            r_apo  = a * AU * MODEL_SIZE_FACTOR * (1 + e)
+            # As posições locais (no plano orbital, alinhadas com o eixo X)
             peri_pos_local = Vec3(r_peri, 0, 0)
             apo_pos_local  = Vec3(-r_apo, 0, 0)
-            # Rotacione estas posições para levar em conta ω, i e Ω:
-            def rotate(vec):
-                x = vec[0]
-                y = vec[1]
-                z = vec[2]
-                x1 = x * math.cos(Ω_rad) - y * math.sin(Ω_rad)
-                y1 = x * math.sin(Ω_rad) + y * math.cos(Ω_rad)
-                z1 = z
-                # Aplicar inclinação i (rotaciona em torno de X)
-                y2 = y1 * math.cos(i_rad) - z1 * math.sin(i_rad)
-                z2 = y1 * math.sin(i_rad) + z1 * math.cos(i_rad)
-                # Aplicar o argumento do periastro ω
-                x3 = x1 * math.cos(ω_rad) - y2 * math.sin(ω_rad)
-                y3 = x1 * math.sin(ω_rad) + y2 * math.cos(ω_rad)
+            # Função para rotacionar o vetor considerando Ω, i e ω
+            def rotate_marker(vec, ω, i, Ω):
+                # Rotação por ω
+                x1 = vec[0] * math.cos(ω) - vec[1] * math.sin(ω)
+                y1 = vec[0] * math.sin(ω) + vec[1] * math.cos(ω)
+                z1 = vec[2]
+                # Inclinação i (rotaciona em torno de X)
+                x2 = x1
+                y2 = y1 * math.cos(i) - z1 * math.sin(i)
+                z2 = y1 * math.sin(i) + z1 * math.cos(i)
+                # Rotação por Ω (nó ascendente)
+                x3 = x2 * math.cos(Ω) - y2 * math.sin(Ω)
+                y3 = x2 * math.sin(Ω) + y2 * math.cos(Ω)
                 return Vec3(x3, y3, z2)
-            peri_pos = center_orbit + rotate(peri_pos_local)
-            apo_pos  = center_orbit + rotate(apo_pos_local)
+            peri_pos = center_orbit + rotate_marker(peri_pos_local, ω_rad, i_rad, Ω_rad)
+            apo_pos  = center_orbit + rotate_marker(apo_pos_local, ω_rad, i_rad, Ω_rad)
             # Cria marcador de periastro "P"
             tn_p = TextNode('peri')
             tn_p.setText("P")
@@ -315,7 +319,11 @@ class SistemaSolar(ShowBase):
             if key == 'sol':
                 node.setPos(center - self.camera_current_pos)
             else:
-                node.setPos(pos - self.camera_current_pos)
+                if key in parent_moons and zoom < MOON_ZOOM_THRESHOLD:
+                    node.hide()
+                else:
+                    node.show()
+                    node.setPos(pos - self.camera_current_pos)
         new_altitude = CAMERA_BASE_ALTITUDE / self.zoom_current
         self.camera.setPos(0, 0, new_altitude)
         self.camera.lookAt(0, 0, 0)
