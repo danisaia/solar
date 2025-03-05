@@ -15,7 +15,7 @@ REAL_SCALE_FACTOR = 1e-6         # converte valor de raio real para unidades vis
 ZOOM_THRESHOLD = 5.0             # Zoom threshold para visualização
 SIZE_MULTIPLIER = 100.0          # Exagera os tamanhos para visualização
 AU = 1.496e11                    # metros por unidade astronômica
-MODEL_SIZE_FACTOR = 2e-10        # reduzido para diminuir o tamanho do modelo
+MODEL_SIZE_FACTOR = 2e-7        # reduzido para diminuir o tamanho do modelo
 
 # ====== Carregar Dados ======
 caminho_corpos = os.path.join(os.path.dirname(__file__), 'parametros', 'corpos.yaml')
@@ -56,6 +56,10 @@ class SistemaSolar(ShowBase):
         lens = self.cam.node().getLens()
         lens.setNear(0.01)
         lens.setFar(1e12)
+        # Armazenar a referência do lens e valores base para clipping
+        self.lens = lens
+        self.base_near = 0.01
+        self.base_far = 1e12
         # Iluminação
         ambient = AmbientLight("ambient")
         ambient.setColor(Vec4(0.2, 0.2, 0.2, 1))
@@ -151,13 +155,26 @@ class SistemaSolar(ShowBase):
         target = controles.simulation_state['target']
         target_pos = positions.get(target, center)
         zoom = controles.simulation_state['zoom']
-        if zoom < 0.02:
-            controles.simulation_state['zoom'] = 0.02
-            zoom = 0.02
+        # Limitar os valores de zoom para evitar extremos
+        MIN_ZOOM = 0.00002
+        MAX_ZOOM = 2048.0
+        controles.simulation_state['zoom'] = max(min(zoom, MAX_ZOOM), MIN_ZOOM)
+        zoom = controles.simulation_state['zoom']
         self.camera_target_pos = target_pos
         self.zoom_target = zoom
         self.camera_current_pos += (self.camera_target_pos - self.camera_current_pos) * min(self.transition_speed * dt, 1)
         self.zoom_current += (self.zoom_target - self.zoom_current) * min(self.transition_speed * dt, 1)
+
+        # Atualiza dinamicamente os planos de recorte conforme zoom
+        new_near = max(self.base_near / self.zoom_current, 1e-6)
+        new_far = self.base_far / self.zoom_current
+        self.lens.setNear(new_near)
+        self.lens.setFar(new_far)
+
+        # (Opcional) Aqui você pode implementar troca por modelos de maior resolução
+        # if self.zoom_current > <algum limiar>:
+        #     trocar para modelo de alta resolução
+
         if hasattr(self, 'orbit_lines'):
             self.orbit_lines.removeNode()
         ls = LineSegs()
