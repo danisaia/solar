@@ -157,7 +157,7 @@ class SistemaSolar(ShowBase):
         zoom = controles.simulation_state['zoom']
         # Limitar os valores de zoom para evitar extremos
         MIN_ZOOM = 0.00002
-        MAX_ZOOM = 2048.0
+        MAX_ZOOM = 11.0
         controles.simulation_state['zoom'] = max(min(zoom, MAX_ZOOM), MIN_ZOOM)
         zoom = controles.simulation_state['zoom']
         self.camera_target_pos = target_pos
