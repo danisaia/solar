@@ -7,8 +7,8 @@ simulation_state = {
     'zoom': 1.0,
     'current_planet_index': 2,  # Terra é o 3º na ordem
     'current_moon_index': 0,
-    'camera_inclination': 0.0,  # Inclinação da câmera (0 = visão de cima)
-    'target_inclination': 0.0,  # Valor alvo para transição suave
+    'camera_inclination': 0.2,  # Inclinação padrão da câmera
+    'target_inclination': 0.2,  # Valor alvo inicial também com inclinação padrão
 }
 
 planets_order = ['mercurio', 'venus', 'terra', 'marte', 'jupiter', 'saturno', 'urano', 'netuno']
@@ -74,11 +74,13 @@ def velocidade_real():
     print("Velocidade de simulação real:", simulation_state['speed'])
 
 def aumentar_velocidade():
-    simulation_state['speed'] *= 10
+    # Aumenta a velocidade por um fator de 10, mas limita ao máximo de 1,000,000
+    simulation_state['speed'] = min(simulation_state['speed'] * 10, 1000000.0)
     print("Velocidade aumentada para:", simulation_state['speed'])
 
 def diminuir_velocidade():
-    simulation_state['speed'] /= 10
+    # Diminui a velocidade por um fator de 10, mas limita ao mínimo de 1.0
+    simulation_state['speed'] = max(simulation_state['speed'] / 10, 1.0)
     print("Velocidade diminuída para:", simulation_state['speed'])
 
 def aumentar_zoom():
@@ -106,12 +108,13 @@ def aumentar_inclinacao():
     print(f"Inclinação da câmera aumentada para: {simulation_state['target_inclination']:.2f}")
 
 def diminuir_inclinacao():
-    simulation_state['target_inclination'] = max(simulation_state['target_inclination'] - 0.1, -1.5)
+    # Modificado para limitar o valor mínimo a 0.0 (visão de cima)
+    simulation_state['target_inclination'] = max(simulation_state['target_inclination'] - 0.1, 0.2)
     print(f"Inclinação da câmera diminuída para: {simulation_state['target_inclination']:.2f}")
 
 def resetar_inclinacao():
-    simulation_state['target_inclination'] = 0.0
-    print("Inclinação da câmera resetada")
+    simulation_state['target_inclination'] = 0.2  # Reseta para a inclinação padrão
+    print("Inclinação da câmera resetada para o padrão (0.2)")
 
 # Nova função para registrar controles em Panda3D
 def register_controls(base):
@@ -121,14 +124,13 @@ def register_controls(base):
     base.accept('e', proxima_lua)
     base.accept('q', lua_anterior)
     base.accept('w', centralizar_no_planeta)
-    base.accept('x', velocidade_real)
-    base.accept('c', aumentar_velocidade)
-    base.accept('z', diminuir_velocidade)
+    base.accept('0', velocidade_real)
+    base.accept('=', aumentar_velocidade)
+    base.accept('-', diminuir_velocidade)
     base.accept('wheel_up', aumentar_zoom)
     base.accept('wheel_down', diminuir_zoom)
     base.accept('shift-wheel_up', aumentar_zoom_curto)
     base.accept('shift-wheel_down', diminuir_zoom_curto)
-    base.accept('v', resetar_zoom)
     base.accept('r', aumentar_inclinacao)
     base.accept('f', diminuir_inclinacao)
     base.accept('v', resetar_inclinacao)

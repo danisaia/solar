@@ -74,13 +74,15 @@ class SistemaSolar(ShowBase):
         self.render.setLight(self.render.attachNewNode(directional))
 
         # Inicializa variáveis de câmera e transição de zoom
-        self.camera_target_pos = self.camera.getPos()
-        self.camera_current_pos = self.camera.getPos()
-        self.zoom_target = controles.simulation_state['zoom']
         self.zoom_current = controles.simulation_state['zoom']
-        self.camera_inclination = controles.simulation_state['camera_inclination']
-        self.target_inclination = controles.simulation_state['target_inclination']
+        self.zoom_target = controles.simulation_state['zoom']
+        self.camera_inclination = 0.2  # Começar com a inclinação padrão de 0.2
+        self.target_inclination = 0.2  # Alvo de inclinação também com valor padrão
         self.transition_speed = 5.0
+        
+        # Garantir que o estado global tenha a inclinação padrão
+        controles.simulation_state['camera_inclination'] = 0.2
+        controles.simulation_state['target_inclination'] = 0.2
 
         # Carrega os modelos dos corpos e define suas características visuais
         self.nodes = {}
@@ -119,12 +121,38 @@ class SistemaSolar(ShowBase):
             verdana_font = self.loader.loadFont("verdana.ttf")
         except Exception:
             verdana_font = None
+            # O aviso sobre a fonte ausente é esperado e não afeta o funcionamento
         self.text_focus = OnscreenText(text="", pos=(0, 0.9), scale=0.07,
                                        fg=(1,1,1,1), align=TextNode.ACenter, font=verdana_font)
         positions = self.calcular_posicoes()
         terra_pos = positions.get('terra', Vec3(0,0,0))
-        self.camera.setPos(terra_pos.x, terra_pos.y - 30, terra_pos.z + 20)
-        self.camera.lookAt(terra_pos)
+        
+        # Modificar inicialização da câmera para usar o mesmo sistema da inclinação
+        CAMERA_BASE_ALTITUDE = 100.0
+        new_altitude = CAMERA_BASE_ALTITUDE / self.zoom_current
+        
+        # Inicializa a câmera já com o sistema de coordenadas que será usado no update
+        # A câmera começa no "norte" do sistema (z+) e olha para a origem
+        self.camera.setPos(0, 0, new_altitude)
+        self.camera.lookAt(0, 0, 0)
+        
+        # Define a direção base da câmera - olhando "para baixo" no eixo Z
+        self.camera_base_direction = Vec3(0, 0, -1)
+        
+        # Define a posição atual e alvo como a posição da Terra
+        self.camera_target_pos = terra_pos
+        self.camera_current_pos = Vec3(terra_pos)
+        
+        # Posiciona a câmera inicialmente com a inclinação padrão
+        CAMERA_BASE_ALTITUDE = 100.0
+        new_altitude = CAMERA_BASE_ALTITUDE / self.zoom_current
+        
+        # Aplicar inclinação padrão na inicialização
+        camera_x = new_altitude * math.sin(self.camera_inclination)
+        camera_z = new_altitude * math.cos(self.camera_inclination)
+        self.camera.setPos(camera_x, 0, camera_z)
+        self.camera.lookAt(0, 0, 0)
+        
         self.taskMgr.add(self.update_simulation, "update_simulation")
     
     def calcular_posicoes(self):
@@ -186,10 +214,12 @@ class SistemaSolar(ShowBase):
         zoom = controles.simulation_state['zoom']
         MOON_ZOOM_THRESHOLD = 0.003
         
-        # Anima a transição da câmera e suaviza o zoom
+        # Anima a transição da câmera e suaviza o zoom e inclinação
         self.camera_target_pos = target_pos
         self.zoom_target = zoom
         self.target_inclination = controles.simulation_state['target_inclination']
+        
+        # Aplica transições suaves
         self.camera_current_pos += (self.camera_target_pos - self.camera_current_pos) * min(self.transition_speed * dt, 1)
         self.zoom_current += (self.zoom_target - self.zoom_current) * min(self.transition_speed * dt, 1)
         self.camera_inclination += (self.target_inclination - self.camera_inclination) * min(self.transition_speed * dt, 1)
@@ -263,8 +293,14 @@ class SistemaSolar(ShowBase):
         new_altitude = CAMERA_BASE_ALTITUDE / self.zoom_current
         
         # Calcular posição da câmera com base na inclinação
+        # Usamos o sistema de coordenadas esféricas para garantir consistência
+        new_altitude = CAMERA_BASE_ALTITUDE / self.zoom_current
+        
+        # Cálculo mais consistente para inclinação da câmera no plano x-z
         camera_x = new_altitude * math.sin(self.camera_inclination)
         camera_z = new_altitude * math.cos(self.camera_inclination)
+        
+        # Posicionar a câmera e garantir que ela sempre olhe para o centro
         self.camera.setPos(camera_x, 0, camera_z)
         self.camera.lookAt(0, 0, 0)
         
