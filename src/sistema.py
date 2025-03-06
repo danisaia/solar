@@ -184,7 +184,12 @@ class SistemaSolar(ShowBase):
         controles.simulation_state['horizontal_rotation'] = camera_state['horizontal_rotation']
         
         MOON_ZOOM_THRESHOLD = 0.003
+        ORBIT_DISPLAY_THRESHOLD = 0.05  # Limiar para exibição de órbitas de planetas não focados
         zoom = controles.simulation_state['zoom']
+        
+        # Determina se o alvo atual é uma lua e qual é seu planeta pai
+        target_is_moon = target.lower() in parent_moons
+        target_parent_planet = parent_moons.get(target.lower(), None) if target_is_moon else None
         
         # Desenha as órbitas dos corpos como linhas
         if hasattr(self, 'orbit_lines'):
@@ -196,8 +201,35 @@ class SistemaSolar(ShowBase):
             kl = key.lower()
             if kl == 'sol' or ('orbital' not in astro):
                 continue
-            if kl in parent_moons and zoom < MOON_ZOOM_THRESHOLD:
+                
+            # Determina se o corpo atual deve ter sua órbita exibida
+            show_orbit = False
+            
+            # Caso 1: É o alvo atual
+            if kl == target.lower():
+                show_orbit = True
+                
+            # Caso 2: É o planeta pai do alvo (quando o alvo é uma lua)
+            elif target_is_moon and kl == target_parent_planet:
+                show_orbit = True
+                
+            # Caso 3: É uma lua do planeta em foco
+            elif kl in parent_moons and parent_moons[kl] == target.lower():
+                show_orbit = True
+                
+            # Caso 4: Zoom está abaixo do limiar para mostrar todas as órbitas
+            elif zoom < ORBIT_DISPLAY_THRESHOLD:
+                # Para planetas, sempre mostrar
+                if kl not in parent_moons:
+                    show_orbit = True
+                # Para luas, verificar o zoom específico para luas
+                elif zoom >= MOON_ZOOM_THRESHOLD:
+                    show_orbit = True
+            
+            # Pula se não deve mostrar a órbita
+            if not show_orbit:
                 continue
+            
             orb = astro['orbital']
             period_days = parse_number(orb['T']) * 365.25
             θ_base = 2 * math.pi * ((sim_days % period_days) / period_days)
