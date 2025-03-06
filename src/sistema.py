@@ -2,7 +2,9 @@
 from direct.showbase.ShowBase import ShowBase
 from direct.task import Task
 from direct.gui.OnscreenText import OnscreenText
-from panda3d.core import ClockObject, WindowProperties, AmbientLight, DirectionalLight, Vec4, Vec3, LineSegs, PointLight
+from panda3d.core import (ClockObject, WindowProperties, AmbientLight, DirectionalLight, 
+                         Vec4, Vec3, LineSegs, PointLight, AntialiasAttrib, FrameBufferProperties)
+from panda3d.core import loadPrcFileData
 import yaml, datetime, math, os
 from datetime import timedelta
 import src.controles as controles  # Gerencia controles e estado da simulação
@@ -46,17 +48,26 @@ def parse_number(val):
 
 class SistemaSolar(ShowBase):
     def __init__(self):
+        # Configurar Anti-Aliasing antes de inicializar ShowBase
+        loadPrcFileData("", "framebuffer-multisample 1")
+        loadPrcFileData("", "multisamples 4")
+        
         ShowBase.__init__(self)
+        
         # Configura a janela de renderização com a resolução da tela
         props = WindowProperties()
         import tkinter as tk
         root = tk.Tk()
-        screen_width  = root.winfo_screenwidth()
+        screen_width = root.winfo_screenwidth()
         screen_height = root.winfo_screenheight()
         root.destroy()
         props.setSize(screen_width, screen_height)
         self.win.requestProperties(props)
         self.setBackgroundColor(0, 0, 0, 1)
+        
+        # Configura Anti-Aliasing adicional para objetos renderizados
+        self.render.setAntialias(AntialiasAttrib.MAuto)
+        
         controles.register_controls(self)  # Ativa os controles da simulação
         
         # Inicializa o controlador da câmera
@@ -195,8 +206,8 @@ class SistemaSolar(ShowBase):
         if hasattr(self, 'orbit_lines'):
             self.orbit_lines.removeNode()
         ls = LineSegs()
-        ls.setThickness(1.0)
-        num_segments = 150
+        ls.setThickness(1.5)  # Aumentando a espessura para melhorar visibilidade
+        num_segments = 200  # Aumentando o número de segmentos para linhas mais suaves
         for key, astro in astros.items():
             kl = key.lower()
             if kl == 'sol' or ('orbital' not in astro):
