@@ -1,16 +1,16 @@
-# ...existing imports e definições globais...
+# Importa módulos essenciais e define parâmetros globais
 from direct.showbase.ShowBase import ShowBase
 from direct.task import Task
 from direct.gui.OnscreenText import OnscreenText
 from panda3d.core import ClockObject, WindowProperties, AmbientLight, DirectionalLight, Vec4, Vec3, LineSegs, PointLight
 import yaml, datetime, math, os
 from datetime import timedelta
-import src.controles as controles  # Carrega os controles e simulation_state
+import src.controles as controles  # Gerencia controles e estado da simulação
 
-# ...existing código de constantes e carregamento de corpos (astros, parent_moons)...
+# Define constantes e carrega dados dos corpos celestes
 globalClock = ClockObject.getGlobalClock()
-ref_date = datetime.datetime(2000, 1, 1, 12, 0, 0)
-sim_days = (datetime.datetime.now() - ref_date).total_seconds() / 86400
+ref_date = datetime.datetime(2000, 1, 1, 12, 0, 0)   # Data base da simulação
+sim_days = (datetime.datetime.now() - ref_date).total_seconds() / 86400   # Dias simulados
 REAL_SCALE_FACTOR = 1e-6
 ZOOM_THRESHOLD = 5.0
 SIZE_MULTIPLIER = 100.0
@@ -20,6 +20,8 @@ MODEL_SIZE_FACTOR = 2e-7
 caminho_corpos = os.path.join(os.path.dirname(__file__), 'parametros', 'corpos.yaml')
 with open(caminho_corpos, 'r', encoding='utf8') as f:
     astros = yaml.safe_load(f)
+
+# Mapeia luas aos seus planetas pais
 parent_moons = {
     'lua':     'terra',
     'io':      'jupiter',
@@ -33,7 +35,7 @@ parent_moons = {
 }
 
 def parse_number(val):
-    # ...existing código...
+    # Converte valores para float, avaliando expressões simples se necessário
     if isinstance(val, (int, float)):
         return float(val)
     try:
@@ -44,9 +46,8 @@ def parse_number(val):
 class SistemaSolar(ShowBase):
     def __init__(self):
         ShowBase.__init__(self)
-        # ...existing código de configuração da janela, câmera, iluminação, nós e textos...
+        # Configura a janela de renderização com a resolução da tela
         props = WindowProperties()
-        # ...existing código de configuração da janela...
         import tkinter as tk
         root = tk.Tk()
         screen_width  = root.winfo_screenwidth()
@@ -55,7 +56,7 @@ class SistemaSolar(ShowBase):
         props.setSize(screen_width, screen_height)
         self.win.requestProperties(props)
         self.setBackgroundColor(0, 0, 0, 1)
-        controles.register_controls(self)
+        controles.register_controls(self)  # Ativa os controles da simulação
         self.disableMouse()
         lens = self.cam.node().getLens()
         lens.setNear(0.01)
@@ -64,6 +65,7 @@ class SistemaSolar(ShowBase):
         self.base_near = 0.01
         self.base_far = 1e12
 
+        # Aplica iluminação ambiente e direcional
         ambient = AmbientLight("ambient")
         ambient.setColor(Vec4(0.2, 0.2, 0.2, 1))
         directional = DirectionalLight("directional")
@@ -71,12 +73,14 @@ class SistemaSolar(ShowBase):
         self.render.setLight(self.render.attachNewNode(ambient))
         self.render.setLight(self.render.attachNewNode(directional))
 
+        # Inicializa variáveis de câmera e transição de zoom
         self.camera_target_pos = self.camera.getPos()
         self.camera_current_pos = self.camera.getPos()
         self.zoom_target = controles.simulation_state['zoom']
         self.zoom_current = controles.simulation_state['zoom']
         self.transition_speed = 5.0
 
+        # Carrega os modelos dos corpos e define suas características visuais
         self.nodes = {}
         for key, astro in astros.items():
             kl = key.lower()
@@ -107,6 +111,7 @@ class SistemaSolar(ShowBase):
             node.setColor(r, g, b, 1)
             self.nodes[kl] = node
 
+        # Configura o texto de foco e posiciona a câmera inicial
         from panda3d.core import TextNode
         try:
             verdana_font = self.loader.loadFont("verdana.ttf")
@@ -121,7 +126,7 @@ class SistemaSolar(ShowBase):
         self.taskMgr.add(self.update_simulation, "update_simulation")
     
     def calcular_posicoes(self):
-        # ...existing código para calcular posições...
+        # Calcula as posições dos corpos celestes com base em seus parâmetros orbitais
         center = Vec3(0, 0, 0)
         pos = {}
         for key, astro in astros.items():
@@ -145,6 +150,7 @@ class SistemaSolar(ShowBase):
                 y = x_orb * math.sin(Ω_rad) + y_orb * math.cos(Ω_rad) * math.cos(i_rad)
                 z = y_orb * math.sin(i_rad)
                 pos[kl] = Vec3(x, y, z)
+        # Ajusta as posições das luas com base em seus planetas pais
         for key, astro in astros.items():
             kl = key.lower()
             if 'orbital' in astro and kl in parent_moons:
@@ -156,7 +162,7 @@ class SistemaSolar(ShowBase):
         return pos
 
     def update_simulation(self, task):
-        # ...existing código de update da simulação...
+        # Atualiza o estado da simulação, ajusta a câmera e desenha órbitas
         dt = globalClock.getDt()
         global sim_days
         sim_days += (dt / 86400) * controles.simulation_state['speed']
@@ -178,6 +184,7 @@ class SistemaSolar(ShowBase):
         zoom = controles.simulation_state['zoom']
         MOON_ZOOM_THRESHOLD = 0.003
         
+        # Anima a transição da câmera e suaviza o zoom
         self.camera_target_pos = target_pos
         self.zoom_target = zoom
         self.camera_current_pos += (self.camera_target_pos - self.camera_current_pos) * min(self.transition_speed * dt, 1)
@@ -188,6 +195,7 @@ class SistemaSolar(ShowBase):
         self.lens.setNear(new_near)
         self.lens.setFar(new_far)
         
+        # Desenha as órbitas dos corpos como linhas
         if hasattr(self, 'orbit_lines'):
             self.orbit_lines.removeNode()
         ls = LineSegs()
@@ -229,6 +237,7 @@ class SistemaSolar(ShowBase):
                     ls.drawTo(pt_rel)
         self.orbit_lines = self.render.attachNewNode(ls.create())
 
+        # Atualiza posição e visibilidade dos corpos conforme o zoom
         for key, node in self.nodes.items():
             pos = positions.get(key, center)
             if key in astros and 'raio' in astros[key]:
@@ -251,6 +260,3 @@ class SistemaSolar(ShowBase):
         astro_focus = astros.get(target.lower(), {"nome": target})
         self.text_focus.setText(astro_focus["nome"])
         return Task.cont
-
-# ...existing código de outras funções, se houver...
-# Nota: O trecho de ponto de entrada foi removido para ser chamado através de um módulo de entrada.
