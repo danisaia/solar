@@ -126,25 +126,25 @@ def resetar_inclinacao():
     print("Inclinação da câmera resetada para o padrão (0.2)")
 
 def orbitar_esquerda():
-    simulation_state['target_rotation'] -= 0.1
+    simulation_state['target_rotation'] -= 0.3
     if simulation_state['target_rotation'] < -6.28:  # Aproximadamente -2π
         simulation_state['target_rotation'] += 6.28  # Reset após uma volta completa
     print(f"Orbitando para a esquerda: {simulation_state['target_rotation']:.2f}")
 
 def orbitar_direita():
-    simulation_state['target_rotation'] += 0.1
+    simulation_state['target_rotation'] += 0.3
     if simulation_state['target_rotation'] > 6.28:  # Aproximadamente 2π
         simulation_state['target_rotation'] -= 6.28  # Reset após uma volta completa
     print(f"Orbitando para a direita: {simulation_state['target_rotation']:.2f}")
 
 def orbitar_esquerda_preciso():
-    simulation_state['target_rotation'] -= 0.01
+    simulation_state['target_rotation'] -= 0.1
     if simulation_state['target_rotation'] < -6.28:  # Aproximadamente -2π
         simulation_state['target_rotation'] += 6.28  # Reset após uma volta completa
     print(f"Orbitando precisamente para a esquerda: {simulation_state['target_rotation']:.2f}")
 
 def orbitar_direita_preciso():
-    simulation_state['target_rotation'] += 0.01
+    simulation_state['target_rotation'] += 0.1
     if simulation_state['target_rotation'] > 6.28:  # Aproximadamente 2π
         simulation_state['target_rotation'] -= 6.28  # Reset após uma volta completa
     print(f"Orbitando precisamente para a direita: {simulation_state['target_rotation']:.2f}")
