@@ -78,6 +78,8 @@ class SistemaSolar(ShowBase):
         self.camera_current_pos = self.camera.getPos()
         self.zoom_target = controles.simulation_state['zoom']
         self.zoom_current = controles.simulation_state['zoom']
+        self.camera_inclination = controles.simulation_state['camera_inclination']
+        self.target_inclination = controles.simulation_state['target_inclination']
         self.transition_speed = 5.0
 
         # Carrega os modelos dos corpos e define suas características visuais
@@ -187,8 +189,13 @@ class SistemaSolar(ShowBase):
         # Anima a transição da câmera e suaviza o zoom
         self.camera_target_pos = target_pos
         self.zoom_target = zoom
+        self.target_inclination = controles.simulation_state['target_inclination']
         self.camera_current_pos += (self.camera_target_pos - self.camera_current_pos) * min(self.transition_speed * dt, 1)
         self.zoom_current += (self.zoom_target - self.zoom_current) * min(self.transition_speed * dt, 1)
+        self.camera_inclination += (self.target_inclination - self.camera_inclination) * min(self.transition_speed * dt, 1)
+        
+        # Atualiza o estado da simulação para sincronizar
+        controles.simulation_state['camera_inclination'] = self.camera_inclination
         
         new_near = max(self.base_near / self.zoom_current, 1e-6)
         new_far = self.base_far / self.zoom_current
@@ -254,8 +261,13 @@ class SistemaSolar(ShowBase):
                     node.show()
                     node.setPos(pos - self.camera_current_pos)
         new_altitude = CAMERA_BASE_ALTITUDE / self.zoom_current
-        self.camera.setPos(0, 0, new_altitude)
+        
+        # Calcular posição da câmera com base na inclinação
+        camera_x = new_altitude * math.sin(self.camera_inclination)
+        camera_z = new_altitude * math.cos(self.camera_inclination)
+        self.camera.setPos(camera_x, 0, camera_z)
         self.camera.lookAt(0, 0, 0)
+        
         sim_datetime = ref_date + timedelta(days=sim_days)
         astro_focus = astros.get(target.lower(), {"nome": target})
         self.text_focus.setText(astro_focus["nome"])

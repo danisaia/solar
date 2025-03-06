@@ -7,6 +7,8 @@ simulation_state = {
     'zoom': 1.0,
     'current_planet_index': 2,  # Terra é o 3º na ordem
     'current_moon_index': 0,
+    'camera_inclination': 0.0,  # Inclinação da câmera (0 = visão de cima)
+    'target_inclination': 0.0,  # Valor alvo para transição suave
 }
 
 planets_order = ['mercurio', 'venus', 'terra', 'marte', 'jupiter', 'saturno', 'urano', 'netuno']
@@ -99,6 +101,18 @@ def resetar_zoom():
     simulation_state['zoom'] = 1.0
     print("Zoom resetado para:", simulation_state['zoom'])
 
+def aumentar_inclinacao():
+    simulation_state['target_inclination'] = min(simulation_state['target_inclination'] + 0.1, 1.5)
+    print(f"Inclinação da câmera aumentada para: {simulation_state['target_inclination']:.2f}")
+
+def diminuir_inclinacao():
+    simulation_state['target_inclination'] = max(simulation_state['target_inclination'] - 0.1, -1.5)
+    print(f"Inclinação da câmera diminuída para: {simulation_state['target_inclination']:.2f}")
+
+def resetar_inclinacao():
+    simulation_state['target_inclination'] = 0.0
+    print("Inclinação da câmera resetada")
+
 # Nova função para registrar controles em Panda3D
 def register_controls(base):
     base.accept('s', centralizar_no_sol)
@@ -110,14 +124,14 @@ def register_controls(base):
     base.accept('x', velocidade_real)
     base.accept('c', aumentar_velocidade)
     base.accept('z', diminuir_velocidade)
-    # Removidos os bindings antigos de zoom
-    # Vinculando a roda do mouse (sem Shift) para zoom normal
     base.accept('wheel_up', aumentar_zoom)
     base.accept('wheel_down', diminuir_zoom)
-    # Vinculando a roda do mouse com Shift para zoom corto
     base.accept('shift-wheel_up', aumentar_zoom_curto)
     base.accept('shift-wheel_down', diminuir_zoom_curto)
     base.accept('v', resetar_zoom)
+    base.accept('r', aumentar_inclinacao)
+    base.accept('f', diminuir_inclinacao)
+    base.accept('v', resetar_inclinacao)
 
 if __name__ == '__main__':
     # Exemplo de teste: a função handle_key_event pode ser chamada no loop de eventos de solar.py.
