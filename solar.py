@@ -48,7 +48,15 @@ class SistemaSolar(ShowBase):
         ShowBase.__init__(self)
         # Configurar janela e câmera
         props = WindowProperties()
-        props.setSize(1600, 900)
+        # Remova ou comente a linha fixa e maximize a janela:
+        # props.setSize(1600, 900)
+        # Remover props.setMaximized(True) e usar tkinter para obter dimensões da tela:
+        import tkinter as tk
+        root = tk.Tk()
+        screen_width  = root.winfo_screenwidth()
+        screen_height = root.winfo_screenheight()
+        root.destroy()
+        props.setSize(screen_width, screen_height)
         self.win.requestProperties(props)
         self.setBackgroundColor(0, 0, 0, 1)
         controles.register_controls(self)
