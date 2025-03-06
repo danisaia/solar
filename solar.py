@@ -111,11 +111,13 @@ class SistemaSolar(ShowBase):
             b = int(cor.lstrip('#')[4:6], 16) / 255.0
             node.setColor(r, g, b, 1)
             self.nodes[kl] = node
-        # Textos informativos
-        self.text_date = OnscreenText(text="", pos=(-1.3, 0.9), scale=0.05)
-        self.text_speed = OnscreenText(text="", pos=(-1.3, -0.95), scale=0.05)
-        self.text_zoom = OnscreenText(text="", pos=(1.0, -0.95), scale=0.05)
-        self.text_focus = OnscreenText(text="", pos=(0, 0.85), scale=0.07, fg=(1,1,1,1), align=0)
+        # Cria texto informativo do objeto em foco, centralizado no topo com fonte Verdana
+        from panda3d.core import TextNode
+        try:
+            verdana_font = self.loader.loadFont("verdana.ttf")
+        except Exception:
+            verdana_font = None  # Fallback para a fonte padrão se Verdana não for encontrada
+        self.text_focus = OnscreenText(text="", pos=(0, 0.9), scale=0.07, fg=(1,1,1,1), align=TextNode.ACenter, font=verdana_font)
         # Posicionar a câmera inicialmente centrada na Terra
         positions = self.calcular_posicoes()
         terra_pos = positions.get('terra', Vec3(0,0,0))
@@ -339,9 +341,6 @@ class SistemaSolar(ShowBase):
         self.camera.setPos(0, 0, new_altitude)
         self.camera.lookAt(0, 0, 0)
         sim_datetime = ref_date + timedelta(days=sim_days)
-        self.text_date.setText(sim_datetime.strftime("%d/%m/%Y, %H:%M:%S"))
-        self.text_speed.setText(f"Velocidade: x{controles.simulation_state['speed']:.1f}")
-        self.text_zoom.setText(f"Zoom: x{self.zoom_current:.1f}")
         astro_focus = astros.get(target.lower(), {"nome": target})
         self.text_focus.setText(astro_focus["nome"])
         return Task.cont
