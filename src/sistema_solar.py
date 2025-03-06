@@ -273,7 +273,8 @@ class SistemaSolar(ShowBase):
                     pt = parent_pos + pt
                 pt_rel = pt - self.camera_current_pos
                 diff = (f - (θ_base + ω_rad)) % (2 * math.pi)
-                intensity = 0.05 + 0.45 * (diff / (2 * math.pi))
+                # Ajustado o gradiente: mantém o tom mais escuro em 0.05, mas reduz o mais claro
+                intensity = 0.05 + 0.25 * (diff / (2 * math.pi))
                 ls.setColor(intensity, intensity, intensity, 1)
                 if j == 0:
                     ls.moveTo(pt_rel)

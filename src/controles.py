@@ -113,6 +113,14 @@ def diminuir_inclinacao():
     simulation_state['target_inclination'] = max(simulation_state['target_inclination'] - 0.1, 0.2)
     print(f"Inclinação da câmera diminuída para: {simulation_state['target_inclination']:.2f}")
 
+def aumentar_inclinacao_preciso():
+    simulation_state['target_inclination'] = min(simulation_state['target_inclination'] + 0.01, 1.5)
+    print(f"Inclinação da câmera aumentada precisamente para: {simulation_state['target_inclination']:.2f}")
+
+def diminuir_inclinacao_preciso():
+    simulation_state['target_inclination'] = max(simulation_state['target_inclination'] - 0.01, 0.2)
+    print(f"Inclinação da câmera diminuída precisamente para: {simulation_state['target_inclination']:.2f}")
+
 def resetar_inclinacao():
     simulation_state['target_inclination'] = 0.2  # Reseta para a inclinação padrão
     print("Inclinação da câmera resetada para o padrão (0.2)")
@@ -128,6 +136,18 @@ def orbitar_direita():
     if simulation_state['target_rotation'] > 6.28:  # Aproximadamente 2π
         simulation_state['target_rotation'] -= 6.28  # Reset após uma volta completa
     print(f"Orbitando para a direita: {simulation_state['target_rotation']:.2f}")
+
+def orbitar_esquerda_preciso():
+    simulation_state['target_rotation'] -= 0.01
+    if simulation_state['target_rotation'] < -6.28:  # Aproximadamente -2π
+        simulation_state['target_rotation'] += 6.28  # Reset após uma volta completa
+    print(f"Orbitando precisamente para a esquerda: {simulation_state['target_rotation']:.2f}")
+
+def orbitar_direita_preciso():
+    simulation_state['target_rotation'] += 0.01
+    if simulation_state['target_rotation'] > 6.28:  # Aproximadamente 2π
+        simulation_state['target_rotation'] -= 6.28  # Reset após uma volta completa
+    print(f"Orbitando precisamente para a direita: {simulation_state['target_rotation']:.2f}")
 
 # Nova função para registrar controles em Panda3D
 def register_controls(base):
@@ -149,6 +169,12 @@ def register_controls(base):
     base.accept('v', resetar_inclinacao)
     base.accept('z', orbitar_esquerda)
     base.accept('c', orbitar_direita)
+    
+    # Registrar comandos precisos com Shift
+    base.accept('shift-r', aumentar_inclinacao_preciso)
+    base.accept('shift-f', diminuir_inclinacao_preciso)
+    base.accept('shift-z', orbitar_esquerda_preciso)
+    base.accept('shift-c', orbitar_direita_preciso)
 
 if __name__ == '__main__':
     # Exemplo de teste: a função handle_key_event pode ser chamada no loop de eventos de solar.py.
