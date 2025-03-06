@@ -78,11 +78,15 @@ class SistemaSolar(ShowBase):
         self.zoom_target = controles.simulation_state['zoom']
         self.camera_inclination = 0.2  # Começar com a inclinação padrão de 0.2
         self.target_inclination = 0.2  # Alvo de inclinação também com valor padrão
+        self.horizontal_rotation = 0.0  # Rotação horizontal inicial
+        self.target_rotation = 0.0      # Rotação horizontal alvo
         self.transition_speed = 5.0
         
         # Garantir que o estado global tenha a inclinação padrão
         controles.simulation_state['camera_inclination'] = 0.2
         controles.simulation_state['target_inclination'] = 0.2
+        controles.simulation_state['horizontal_rotation'] = 0.0
+        controles.simulation_state['target_rotation'] = 0.0
 
         # Carrega os modelos dos corpos e define suas características visuais
         self.nodes = {}
@@ -218,14 +222,17 @@ class SistemaSolar(ShowBase):
         self.camera_target_pos = target_pos
         self.zoom_target = zoom
         self.target_inclination = controles.simulation_state['target_inclination']
+        self.target_rotation = controles.simulation_state['target_rotation']
         
         # Aplica transições suaves
         self.camera_current_pos += (self.camera_target_pos - self.camera_current_pos) * min(self.transition_speed * dt, 1)
         self.zoom_current += (self.zoom_target - self.zoom_current) * min(self.transition_speed * dt, 1)
         self.camera_inclination += (self.target_inclination - self.camera_inclination) * min(self.transition_speed * dt, 1)
+        self.horizontal_rotation += (self.target_rotation - self.horizontal_rotation) * min(self.transition_speed * dt, 1)
         
         # Atualiza o estado da simulação para sincronizar
         controles.simulation_state['camera_inclination'] = self.camera_inclination
+        controles.simulation_state['horizontal_rotation'] = self.horizontal_rotation
         
         new_near = max(self.base_near / self.zoom_current, 1e-6)
         new_far = self.base_far / self.zoom_current
@@ -292,16 +299,19 @@ class SistemaSolar(ShowBase):
                     node.setPos(pos - self.camera_current_pos)
         new_altitude = CAMERA_BASE_ALTITUDE / self.zoom_current
         
-        # Calcular posição da câmera com base na inclinação
-        # Usamos o sistema de coordenadas esféricas para garantir consistência
+        # Calcular posição da câmera com base na inclinação e rotação horizontal
+        # Usamos coordenadas esféricas para calcular a posição da câmera
         new_altitude = CAMERA_BASE_ALTITUDE / self.zoom_current
         
-        # Cálculo mais consistente para inclinação da câmera no plano x-z
-        camera_x = new_altitude * math.sin(self.camera_inclination)
-        camera_z = new_altitude * math.cos(self.camera_inclination)
+        # Calcular a posição usando coordenadas esféricas
+        # theta (horizontal_rotation): ângulo no plano XY
+        # phi (camera_inclination): ângulo a partir do eixo Z
+        x = new_altitude * math.sin(self.camera_inclination) * math.cos(self.horizontal_rotation)
+        y = new_altitude * math.sin(self.camera_inclination) * math.sin(self.horizontal_rotation)
+        z = new_altitude * math.cos(self.camera_inclination)
         
         # Posicionar a câmera e garantir que ela sempre olhe para o centro
-        self.camera.setPos(camera_x, 0, camera_z)
+        self.camera.setPos(x, y, z)
         self.camera.lookAt(0, 0, 0)
         
         sim_datetime = ref_date + timedelta(days=sim_days)

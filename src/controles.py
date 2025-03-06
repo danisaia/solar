@@ -9,6 +9,8 @@ simulation_state = {
     'current_moon_index': 0,
     'camera_inclination': 0.2,  # Inclinação padrão da câmera
     'target_inclination': 0.2,  # Valor alvo inicial também com inclinação padrão
+    'horizontal_rotation': 0.0,  # Ângulo de rotação horizontal (0 = visão frontal)
+    'target_rotation': 0.0,     # Valor alvo para transição suave da rotação
 }
 
 planets_order = ['mercurio', 'venus', 'terra', 'marte', 'jupiter', 'saturno', 'urano', 'netuno']
@@ -108,13 +110,24 @@ def aumentar_inclinacao():
     print(f"Inclinação da câmera aumentada para: {simulation_state['target_inclination']:.2f}")
 
 def diminuir_inclinacao():
-    # Modificado para limitar o valor mínimo a 0.0 (visão de cima)
     simulation_state['target_inclination'] = max(simulation_state['target_inclination'] - 0.1, 0.2)
     print(f"Inclinação da câmera diminuída para: {simulation_state['target_inclination']:.2f}")
 
 def resetar_inclinacao():
     simulation_state['target_inclination'] = 0.2  # Reseta para a inclinação padrão
     print("Inclinação da câmera resetada para o padrão (0.2)")
+
+def orbitar_esquerda():
+    simulation_state['target_rotation'] -= 0.1
+    if simulation_state['target_rotation'] < -6.28:  # Aproximadamente -2π
+        simulation_state['target_rotation'] += 6.28  # Reset após uma volta completa
+    print(f"Orbitando para a esquerda: {simulation_state['target_rotation']:.2f}")
+
+def orbitar_direita():
+    simulation_state['target_rotation'] += 0.1
+    if simulation_state['target_rotation'] > 6.28:  # Aproximadamente 2π
+        simulation_state['target_rotation'] -= 6.28  # Reset após uma volta completa
+    print(f"Orbitando para a direita: {simulation_state['target_rotation']:.2f}")
 
 # Nova função para registrar controles em Panda3D
 def register_controls(base):
@@ -134,6 +147,8 @@ def register_controls(base):
     base.accept('r', aumentar_inclinacao)
     base.accept('f', diminuir_inclinacao)
     base.accept('v', resetar_inclinacao)
+    base.accept('z', orbitar_esquerda)
+    base.accept('c', orbitar_direita)
 
 if __name__ == '__main__':
     # Exemplo de teste: a função handle_key_event pode ser chamada no loop de eventos de solar.py.
