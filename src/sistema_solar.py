@@ -5,7 +5,7 @@ from direct.gui.OnscreenText import OnscreenText
 from panda3d.core import ClockObject, WindowProperties, AmbientLight, DirectionalLight, Vec4, Vec3, LineSegs, PointLight
 import yaml, datetime, math, os
 from datetime import timedelta
-import controles  # Carrega os controles e simulation_state
+import src.controles as controles  # Carrega os controles e simulation_state
 
 # ...existing código de constantes e carregamento de corpos (astros, parent_moons)...
 globalClock = ClockObject.getGlobalClock()
