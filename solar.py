@@ -1,5 +1,5 @@
 # Importa a classe que gerencia o sistema solar.
-from src.sistema_solar import SistemaSolar
+from src.sistema import SistemaSolar
 
 # Inicia o programa quando executado diretamente.
 if __name__ == '__main__':
