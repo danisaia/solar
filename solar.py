@@ -260,7 +260,8 @@ class SistemaSolar(ShowBase):
             self.orbit_markers.removeNode()
             self.orbit_markers = None
         self.orbit_markers = self.render.attachNewNode("orbit_markers")
-        marker_scale = 0.7 / self.zoom_current
+        # Alterado: reduzir o tamanho dos marcadores
+        marker_scale = 0.5 / self.zoom_current
         for key, astro in astros.items():
             kl = key.lower()
             if kl == 'sol' or ('orbital' not in astro):
@@ -303,7 +304,8 @@ class SistemaSolar(ShowBase):
             # Cria marcador de periastro "P"
             tn_p = TextNode('peri')
             tn_p.setText("P")
-            tn_p.setTextColor(1, 1, 1, 1)
+            # Alterado: deixar o marcador mais escuro
+            tn_p.setTextColor(0.7, 0.7, 0.7, 1)
             peri_np = self.orbit_markers.attachNewNode(tn_p)
             peri_np.setScale(marker_scale)
             peri_np.setBillboardPointEye()
@@ -311,7 +313,8 @@ class SistemaSolar(ShowBase):
             # Cria marcador de apoastro "A"
             tn_a = TextNode('apo')
             tn_a.setText("A")
-            tn_a.setTextColor(1, 1, 1, 1)
+            # Alterado: deixar o marcador mais escuro
+            tn_a.setTextColor(0.7, 0.7, 0.7, 1)
             apo_np = self.orbit_markers.attachNewNode(tn_a)
             apo_np.setScale(marker_scale)
             apo_np.setBillboardPointEye()
