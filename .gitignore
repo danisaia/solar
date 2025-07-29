@@ -1,5 +1,120 @@
+# ===============================
+# ARQUIVOS PYTHON
+# ===============================
+
 # Arquivos do ambiente virtual
 venv/
+env/
+ENV/
 
 # Pastas de cache do Python
 __pycache__/
+*.py[cod]
+*$py.class
+
+# Distribuição / packaging
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# PyInstaller
+*.manifest
+*.spec
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# pyenv
+.python-version
+
+# Ambiente pipenv
+Pipfile.lock
+
+# ===============================
+# ARQUIVOS NODE.JS / THREE.JS
+# ===============================
+
+# Dependências
+solar-web/node_modules/
+solar-web/npm-debug.log*
+solar-web/yarn-debug.log*
+solar-web/yarn-error.log*
+solar-web/pnpm-debug.log*
+
+# Build outputs
+solar-web/dist/
+solar-web/.temp/
+solar-web/.cache/
+
+# Arquivos de environment
+solar-web/.env
+solar-web/.env.local
+solar-web/.env.development.local
+solar-web/.env.test.local
+solar-web/.env.production.local
+
+# Editor directories e arquivos
+solar-web/.vscode/
+solar-web/.idea/
+
+# Arquivos OS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# ===============================
+# ARQUIVOS TEMPORÁRIOS E LOGS
+# ===============================
+
+# Logs gerais
+*.log
+logs/
+
+# Arquivos temporários
+*.tmp
+*.temp
+.tmp/
+.temp/
+
+# Coverage reports
+coverage/
+*.lcov
+
+# nyc test coverage
+.nyc_output
+
+# ESLint cache
+.eslintcache
+
+# TypeScript cache
+*.tsbuildinfo
+
+# ===============================
+# ARQUIVOS ESPECÍFICOS DO PROJETO
+# ===============================
+
+# Screenshots e demo files (se não quiser versioná-los)
+screenshots/
+demo/
+
+# Arquivos de configuração local
+config.local.*
+settings.local.*

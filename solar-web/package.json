@@ -1,0 +1,32 @@
+{
+  "name": "sistema-solar-threejs",
+  "version": "1.0.0",
+  "description": "Sistema Solar 3D migrado para Three.js - Simulação interativa do Sistema Solar",
+  "main": "src/main.js",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "serve": "vite --host"
+  },
+  "keywords": [
+    "three.js",
+    "3d",
+    "astronomy",
+    "solar-system",
+    "simulation",
+    "interactive",
+    "webgl"
+  ],
+  "author": "Sistema Solar Project",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/three": "^0.158.3",
+    "typescript": "^5.8.3",
+    "vite": "^5.4.19"
+  },
+  "dependencies": {
+    "three": "^0.158.0"
+  }
+}
