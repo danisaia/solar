@@ -9,10 +9,20 @@ import {
   SCENE_CONFIG, 
   TEST_SIZES, 
   ANIMATION_SPEEDS, 
-  BODY_COLORS 
+  BODY_COLORS,
+  PHYSICS_CONSTANTS
 } from './constants';
 import { DataLoader } from '../data/DataLoader';
 import { AstronomicalData } from '../types/index';
+import { 
+  OrbitalMechanics, 
+  SimulationTimeManager, 
+  CelestialHierarchy, 
+  CelestialObject,
+  PerformanceOptimizer 
+} from '../physics';
+import { SimulationStateManager } from './SimulationStateManager';
+import { OrbitRenderer } from './OrbitRenderer';
 
 /**
  * Classe principal que gerencia toda a aplicação do Sistema Solar
@@ -34,6 +44,13 @@ export class SolarSystemApp {
   private dataLoader!: DataLoader;
   private astronomicalData!: AstronomicalData;
   
+  // Sistema de física orbital
+  private timeManager!: SimulationTimeManager;
+  private celestialHierarchy!: CelestialHierarchy;
+  private stateManager!: SimulationStateManager;
+  private performanceOptimizer!: PerformanceOptimizer;
+  private orbitRenderer!: OrbitRenderer;
+  
   constructor() {
     console.log('🌌 Criando aplicação Sistema Solar...');
     this.dataLoader = DataLoader.getInstance();
@@ -53,6 +70,9 @@ export class SolarSystemApp {
     // Carregar dados astronômicos primeiro
     await this.loadAstronomicalData();
     
+    // Inicializar sistemas de física
+    this.initPhysicsSystems();
+    
     // Encontra o container
     this.container = document.getElementById('canvas-container')!;
     if (!this.container) {
@@ -66,8 +86,11 @@ export class SolarSystemApp {
     this.initControls();
     this.initLights();
     
-    // Adiciona objetos de teste temporários (serão substituídos pelos dados reais)
-    this.addTestObjects();
+    // Inicializar renderizador de órbitas após cena e câmera criadas
+    this.orbitRenderer = new OrbitRenderer(this.scene, this.camera);
+    
+    // Criar objetos celestes baseados nos dados reais
+    this.createCelestialObjects();
     
     // Inicia o loop de renderização
     this.startRenderLoop();
@@ -99,6 +122,90 @@ export class SolarSystemApp {
       console.error('❌ Falha ao carregar dados astronômicos:', error);
       throw error;
     }
+  }
+  
+  /**
+   * Inicializa os sistemas de física orbital
+   */
+  private initPhysicsSystems(): void {
+    // Inicializar gerenciadores singleton
+    this.timeManager = SimulationTimeManager.getInstance();
+    this.celestialHierarchy = CelestialHierarchy.getInstance();
+    this.stateManager = SimulationStateManager.getInstance();
+    this.performanceOptimizer = PerformanceOptimizer.getInstance();
+    
+    console.log('⚡ Sistemas de física orbital inicializados');
+  }
+  
+  /**
+   * Cria objetos celestes baseados nos dados astronômicos
+   */
+  private createCelestialObjects(): void {
+    console.log('🪐 Criando objetos celestes com dados reais...');
+    
+    // Criar todos os corpos celestes
+    for (const [id, data] of Object.entries(this.astronomicalData)) {
+      const mesh = this.createCelestialMesh(id, data);
+      this.celestialHierarchy.addCelestialBody(id, data, mesh);
+      this.scene.add(mesh);
+    }
+    
+    // Atualizar posições iniciais
+    this.celestialHierarchy.updatePositions();
+    
+    const stats = this.celestialHierarchy.getHierarchyStats();
+    console.log(`✅ Criados ${stats.totalObjects} objetos celestes (${stats.planets} planetas, ${stats.moons} luas)`);
+  }
+  
+  /**
+   * Cria a malha 3D para um corpo celeste com otimizações de performance
+   */
+  private createCelestialMesh(id: string, data: any): THREE.Object3D {
+    // Calcular raio escalado para visualização
+    const scaledRadius = data.raio * PHYSICS_CONSTANTS.MODEL_SIZE_FACTOR;
+    
+    // Ajustar tamanho mínimo para visibilidade
+    const minSize = id === 'sol' ? 5 : 0.5;
+    const finalRadius = Math.max(scaledRadius, minSize);
+    
+    // Usar geometria otimizada do cache
+    const geometry = this.performanceOptimizer.getOptimizedSphereGeometry(
+      finalRadius, 
+      finalRadius > 10 ? 'high' : finalRadius > 2 ? 'medium' : 'low'
+    );
+    
+    // Usar material otimizado do cache
+    const material = this.performanceOptimizer.getOptimizedMaterial(data.cor, {
+      emissive: id === 'sol',
+      metalness: id === 'sol' ? 0 : 0.1,
+      roughness: id === 'sol' ? 1 : 0.8
+    });
+    
+    const mesh = new THREE.Mesh(geometry, material);
+    mesh.name = data.nome;
+    mesh.userData = { id, type: 'celestial-body', data };
+    
+    // Configurar sombras
+    if (LIGHTING_CONFIG.CAST_SHADOWS && id !== 'sol') {
+      mesh.castShadow = true;
+      mesh.receiveShadow = true;
+    }
+    
+    // Aplicar otimizações específicas do objeto
+    if (this.performanceOptimizer) {
+      const celestialObj: CelestialObject = {
+        id,
+        name: data.nome,
+        data,
+        mesh,
+        position: { x: 0, y: 0, z: 0 },
+        children: [],
+        isVisible: true
+      };
+      this.performanceOptimizer.optimizeCelestialObject(celestialObj);
+    }
+    
+    return mesh;
   }
   
   /**
@@ -340,51 +447,13 @@ export class SolarSystemApp {
   }
   
   /**
-   * Adiciona objetos de teste temporários
+   * [DEPRECATED] Método de objetos de teste - substituído por createCelestialObjects()
+   * Mantido para referência, mas não é mais usado
    */
   private addTestObjects(): void {
-    // Sol temporário (esfera emissiva com brilho)
-    const sunGeometry = new THREE.SphereGeometry(TEST_SIZES.SUN_RADIUS, 32, 32);
-    const sunMaterial = new THREE.MeshStandardMaterial({ 
-      color: BODY_COLORS.SUN,
-      emissive: BODY_COLORS.SUN,
-      emissiveIntensity: 0.3,
-      roughness: 0.0,
-      metalness: 0.0
-    });
-    const sun = new THREE.Mesh(sunGeometry, sunMaterial);
-    sun.name = 'Sol';
-    this.scene.add(sun);
-    
-    // Terra temporária (esfera com material PBR básico)
-    const earthGeometry = new THREE.SphereGeometry(TEST_SIZES.EARTH_RADIUS, 32, 32);
-    const earthMaterial = new THREE.MeshStandardMaterial({ 
-      color: BODY_COLORS.EARTH,
-      roughness: 0.8,
-      metalness: 0.0
-    });
-    const earth = new THREE.Mesh(earthGeometry, earthMaterial);
-    earth.position.set(TEST_SIZES.EARTH_DISTANCE, 0, 0);
-    earth.name = 'Terra';
-    earth.castShadow = LIGHTING_CONFIG.CAST_SHADOWS;
-    earth.receiveShadow = LIGHTING_CONFIG.RECEIVE_SHADOWS;
-    this.scene.add(earth);
-    
-    // Lua temporária (esfera com material rochoso)
-    const moonGeometry = new THREE.SphereGeometry(TEST_SIZES.MOON_RADIUS, 16, 16);
-    const moonMaterial = new THREE.MeshStandardMaterial({ 
-      color: BODY_COLORS.MOON,
-      roughness: 0.9,
-      metalness: 0.0
-    });
-    const moon = new THREE.Mesh(moonGeometry, moonMaterial);
-    moon.position.set(TEST_SIZES.EARTH_DISTANCE + TEST_SIZES.MOON_ORBIT_RADIUS, 0, 0);
-    moon.name = 'Lua';
-    moon.castShadow = LIGHTING_CONFIG.CAST_SHADOWS;
-    moon.receiveShadow = LIGHTING_CONFIG.RECEIVE_SHADOWS;
-    this.scene.add(moon);
-    
-    console.log('🪐 Objetos de teste adicionados com materiais PBR (Sol, Terra, Lua)');
+    // Este método foi substituído pelo sistema de física orbital
+    // Os objetos agora são criados baseados nos dados astronômicos reais
+    console.log('⚠️ addTestObjects() foi substituído por createCelestialObjects()');
   }
   
   /**
@@ -406,27 +475,160 @@ export class SolarSystemApp {
     // Atualizar controles com damping
     this.controls.update();
     
-    // TODO: Implementar lógica de atualização da simulação
-    // - Cálculo de posições orbitais
-    // - Atualização da câmera customizada
-    // - Controle de tempo
+    // Atualizar sistema de tempo
+    this.timeManager.update();
     
-    // Animação simples dos objetos de teste
+    // Atualizar posições orbitais de todos os corpos celestes
+    this.celestialHierarchy.updatePositions();
+    
+    // Atualizar renderização de órbitas
+    this.orbitRenderer.updateOrbits();
+    
+    // Rotação dos planetas (apenas rotação própria, não orbital)
+    this.updatePlanetaryRotations();
+    
+    // Sistema de LOD baseado na distância da câmera
+    this.updateLevelOfDetail();
+    
+    // Sistema de visibilidade dinâmica (luas baseadas no zoom)
+    this.updateDynamicVisibility();
+    
+    // Atualizar estado da simulação baseado no foco atual
+    this.updateSimulationState();
+  }
+  
+  /**
+   * Atualiza rotações próprias dos planetas
+   */
+  private updatePlanetaryRotations(): void {
     const time = Date.now() * 0.001;
     
-    // Rotação da Terra
+    // Rotação da Terra (24 horas = 1 dia)
     const earth = this.scene.getObjectByName('Terra');
     if (earth) {
       earth.rotation.y = time * ANIMATION_SPEEDS.EARTH_ROTATION;
     }
     
-    // Órbita da Lua ao redor da Terra
-    const moon = this.scene.getObjectByName('Lua');
-    if (moon && earth) {
-      moon.position.x = earth.position.x + Math.cos(time * ANIMATION_SPEEDS.MOON_ORBIT) * TEST_SIZES.MOON_ORBIT_RADIUS;
-      moon.position.z = earth.position.z + Math.sin(time * ANIMATION_SPEEDS.MOON_ORBIT) * TEST_SIZES.MOON_ORBIT_RADIUS;
+    // Adicionar rotações para outros planetas conforme necessário
+    // Cada planeta tem sua própria velocidade de rotação
+  }
+  
+  /**
+   * Sistema de Level of Detail baseado na distância da câmera
+   * Otimiza performance ajustando qualidade baseada na distância
+   */
+  private updateLevelOfDetail(): void {
+    const cameraPosition = this.camera.position;
+    
+    this.celestialHierarchy.getAllCelestialObjects().forEach(obj => {
+      if (!obj.mesh) return;
+      
+      const distance = cameraPosition.distanceTo(obj.mesh.position);
+      
+      // Ajustar qualidade da geometria baseada na distância
+      if (distance > 1000) {
+        // Muito longe - usar geometria simplificada
+        if (obj.mesh.children.length > 0) {
+          obj.mesh.children.forEach(child => {
+            if ((child as any).isLOD) {
+              (child as any).setLevel(0); // Nível mais baixo de detalhe
+            }
+          });
+        }
+      } else if (distance > 100) {
+        // Distância média - qualidade média
+        if (obj.mesh.children.length > 0) {
+          obj.mesh.children.forEach(child => {
+            if ((child as any).isLOD) {
+              (child as any).setLevel(1);
+            }
+          });
+        }
+      } else {
+        // Próximo - máxima qualidade
+        if (obj.mesh.children.length > 0) {
+          obj.mesh.children.forEach(child => {
+            if ((child as any).isLOD) {
+              (child as any).setLevel(2); // Máximo nível de detalhe
+            }
+          });
+        }
+      }
+    });
+  }
+  
+  /**
+   * Sistema de visibilidade dinâmica baseado no zoom e distância
+   * Equivalente à lógica do Panda3D para mostrar/ocultar luas
+   */
+  private updateDynamicVisibility(): void {
+    const cameraPosition = this.camera.position;
+    const currentTarget = this.stateManager.getState().target;
+    
+    // Calcular "zoom" baseado na distância da câmera ao centro
+    const distanceToCenter = cameraPosition.length();
+    const zoom = 1.0 / Math.max(distanceToCenter / 100, 0.001); // Normalizar zoom
+    
+    // Limites de visibilidade (equivalentes ao código Python)
+    const MOON_ZOOM_THRESHOLD = 0.003;
+    const ORBIT_DISPLAY_THRESHOLD = 0.05;
+    
+    this.celestialHierarchy.getAllCelestialObjects().forEach(obj => {
+      if (!obj.mesh) return;
+      
+      // Lógica de visibilidade para luas
+      if (obj.parent && obj.parent.id !== 'sol') {
+        // É uma lua
+        const isTargetMoon = obj.id === currentTarget;
+        const isTargetPlanet = obj.parent.id === currentTarget;
+        
+        if (isTargetMoon || isTargetPlanet) {
+          // Sempre mostrar se é alvo ou filha do alvo
+          obj.mesh.visible = true;
+        } else if (zoom < MOON_ZOOM_THRESHOLD) {
+          // Zoom muito longe - ocultar luas distantes
+          obj.mesh.visible = false;
+        } else {
+          // Zoom intermediário - mostrar baseado na distância
+          const distanceToCamera = cameraPosition.distanceTo(obj.mesh.position);
+          obj.mesh.visible = distanceToCamera < 500; // Limite arbitrário
+        }
+      } else {
+        // Planetas e Sol sempre visíveis (por enquanto)
+        obj.mesh.visible = true;
+      }
+    });
+  }
+  
+  /**
+   * Atualiza estado geral da simulação
+   * Sincroniza dados entre componentes e otimiza performance
+   */
+  private updateSimulationState(): void {
+    const state = this.stateManager.getState();
+    const timeStatus = this.timeManager.getTimeStatus();
+    
+    // Atualizar informações de performance se necessário
+    if (this.renderer.info.render.frame % 60 === 0) {
+      // A cada 60 frames, verificar performance
+      const now = window.performance.now();
+      const performanceStats = {
+        triangles: this.renderer.info.render.triangles,
+        geometries: this.renderer.info.memory.geometries,
+        textures: this.renderer.info.memory.textures,
+        fps: 1000 / (now - (this.lastPerformanceUpdate || now))
+      };
+      
+      console.debug('Performance Stats:', performanceStats);
+      this.lastPerformanceUpdate = now;
+      
+      // Otimização automática baseada na performance
+      this.performanceOptimizer.autoOptimize(this.renderer);
     }
   }
+  
+  // Propriedade para tracking de performance
+  private lastPerformanceUpdate: number = 0;
   
   /**
    * Renderiza a cena
@@ -446,6 +648,16 @@ export class SolarSystemApp {
    * Limpa recursos ao destruir a aplicação
    */
   dispose(): void {
+    // Limpar recursos de performance
+    if (this.performanceOptimizer) {
+      this.performanceOptimizer.clearCaches();
+    }
+    
+    // Limpar hierarquia de objetos celestes
+    if (this.celestialHierarchy) {
+      this.celestialHierarchy.clear();
+    }
+    
     // Limpar controles
     this.controls.dispose();
     
@@ -467,7 +679,7 @@ export class SolarSystemApp {
     // Remover event listeners
     window.removeEventListener('resize', this.onWindowResize);
     
-    console.log('🧹 Recursos limpos');
+    console.log('🧹 Recursos limpos com otimizações de performance');
   }
   
   /**
@@ -515,5 +727,80 @@ export class SolarSystemApp {
    */
   public getDataStatistics() {
     return this.dataLoader.getDataStatistics();
+  }
+  
+  // === MÉTODOS PÚBLICOS PARA CONTROLE DA SIMULAÇÃO ===
+  
+  /**
+   * Obtém o gerenciador de tempo da simulação
+   */
+  public getTimeManager(): SimulationTimeManager {
+    return this.timeManager;
+  }
+  
+  /**
+   * Obtém a hierarquia de objetos celestes
+   */
+  public getCelestialHierarchy(): CelestialHierarchy {
+    return this.celestialHierarchy;
+  }
+  
+  /**
+   * Obtém o gerenciador de estado da simulação
+   */
+  public getStateManager(): SimulationStateManager {
+    return this.stateManager;
+  }
+  
+  /**
+   * Obtém o renderizador de órbitas
+   */
+  public getOrbitRenderer(): OrbitRenderer {
+    return this.orbitRenderer;
+  }
+  
+  /**
+   * Foca a câmera em um corpo celeste específico
+   */
+  public focusOnCelestialBody(id: string): void {
+    const obj = this.celestialHierarchy.getCelestialObject(id);
+    if (obj) {
+      this.stateManager.setState({ target: id });
+      console.log(`Focando em: ${obj.name}`);
+    } else {
+      console.warn(`Corpo celeste '${id}' não encontrado`);
+    }
+  }
+  
+  /**
+   * Controla a velocidade da simulação
+   */
+  public setSimulationSpeed(speed: number): void {
+    this.timeManager.setSpeed(speed);
+  }
+  
+  /**
+   * Pausa/despausa a simulação
+   */
+  public togglePause(): void {
+    this.timeManager.togglePause();
+  }
+  
+  /**
+   * Obtém estatísticas da simulação atual
+   */
+  public getSimulationStats(): any {
+    return {
+      time: this.timeManager.getTimeStatus(),
+      hierarchy: this.celestialHierarchy.getHierarchyStats(),
+      state: this.stateManager.getState(),
+      performance: this.performanceOptimizer.getPerformanceMetrics(),
+      renderer: {
+        triangles: this.renderer.info.render.triangles,
+        geometries: this.renderer.info.memory.geometries,
+        textures: this.renderer.info.memory.textures,
+        calls: this.renderer.info.render.calls
+      }
+    };
   }
 }

@@ -158,6 +158,24 @@ export const RENDER_THRESHOLDS = {
   ORBIT_LINE_WIDTH: 1.5
 };
 
+// Configurações de física orbital
+export const ORBITAL_CONFIG = {
+  KEPLER_TOLERANCE: 1e-8,
+  KEPLER_MAX_ITERATIONS: 30,
+  GM_SUN: 1.327e20,  // Constante gravitacional padrão do Sol (m³/s²)
+  SECONDS_PER_DAY: 86400,
+  DAYS_PER_YEAR: 365.25
+};
+
+// Configurações de tempo da simulação
+export const TIME_CONFIG = {
+  MIN_SPEED: 0.1,
+  MAX_SPEED: 1000.0,
+  DEFAULT_SPEED: 1.0,
+  SPEED_MULTIPLIERS: [0.1, 0.5, 1, 5, 10, 50, 100, 500, 1000],
+  DEFAULT_SPEED_INDEX: 2
+};
+
 // Configurações de câmera (Three.js)
 export const CAMERA_CONFIG = {
   FOV: 75,
