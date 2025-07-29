@@ -1,31 +1,65 @@
-# Logs de desenvolvimento
+# 📝 Development Log - Sistema Solar Three.js
 
-## Notas importantes do projeto
+## 🎯 Decisões Arquiteturais
 
-### Compatibilidade de dados
-- Todos os parâmetros orbitais foram validados contra o arquivo YAML original
-- Períodos orbitais das luas foram convertidos corretamente (T/365.25)
-- Cores hexadecimais mantidas exatamente como no original
+### **Build System & Frameworks**
+- **Vite**: Escolhido ao invés de Webpack para melhor performance de desenvolvimento
+- **TypeScript**: Para maior robustez e manutenibilidade do código
+- **Three.js v0.158.0**: Versão estável com suporte completo a WebGL 2.0
 
-### Decisões arquiteturais
-- Escolhido Vite ao invés de Webpack para melhor performance de desenvolvimento
-- TypeScript para maior robustez e manutenibilidade 
-- Estrutura modular espelhando a organização do código Python original
+### **Estrutura de Dados**
+- **Singleton Pattern**: DataLoader para cache eficiente dos dados astronômicos
+- **Modularidade**: Espelhando a organização do código Python original
+- **Type Safety**: Interfaces TypeScript completas para todos os dados
 
-### Mapeamento de funcionalidades críticas
-- Sistema de controles: precisa manter exatamente os mesmos comandos
-- Física orbital: algoritmos matemáticos devem ser idênticos
-- Sistema de câmera: comportamento deve ser consistente com Panda3D
-- Renderização de órbitas: lógica de visibilidade complexa precisa ser replicada
+### **Performance Considerações**
+- **GPU vs CPU**: Three.js aproveita GPU via WebGL (vantagem sobre Panda3D CPU)
+- **Instancing**: Preparado para múltiplos objetos similares
+- **LOD**: Level of Detail planejado para objetos distantes
+- **Frustum Culling**: Automático do Three.js
 
-### Considerações de performance
-- Three.js usa GPU via WebGL (vantagem sobre Panda3D CPU)
-- Instancing pode melhorar performance com múltiplos objetos
-- LOD (Level of Detail) será importante para objetos distantes
-- Frustum culling automático do Three.js
+## ⚠️ Diferenças Críticas: Python → JavaScript
 
-### Diferenças importantes Python → JavaScript
-- JavaScript: números de precisão dupla (limitação para grandes distâncias)
-- Gestão de memória: manual no Three.js vs automática no Python
-- Sistema de eventos: diferentes entre Panda3D e web browsers
-- Coordenadas: verificar se sistemas de coordenadas são compatíveis
+### **Precisão Numérica**
+- JavaScript: números de precisão dupla (limitação para grandes distâncias astronômicas)
+- Solução: Usar escalas relativas e validar precisão nos cálculos orbitais
+
+### **Gestão de Memória**
+- JavaScript: manual no Three.js vs automática no Python
+- Solução: Implementar cleanup adequado de geometrias e materiais
+
+### **Sistema de Coordenadas**
+- Verificar compatibilidade entre Panda3D e Three.js (Y-up vs Z-up)
+- Validar transformações de coordenadas nos cálculos orbitais
+
+## 🔧 Compatibilidade de Dados
+
+### **Migração YAML → JSON**
+- ✅ Todos os parâmetros orbitais validados contra arquivo original
+- ✅ Períodos orbitais das luas convertidos corretamente (T/365.25)
+- ✅ Cores hexadecimais mantidas exatamente como no original
+- ✅ Notação científica preservada para massas e distâncias
+
+### **Mapeamento de Funcionalidades Críticas**
+- **Sistema de controles**: Manter comandos idênticos ao Panda3D
+- **Física orbital**: Algoritmos matemáticos devem ser byte-perfect
+- **Sistema de câmera**: Comportamento consistente com implementação Python
+- **Renderização de órbitas**: Lógica de visibilidade complexa para replicar
+
+## 🚨 Pontos de Atenção
+
+### **Sistema de Eventos**
+- Web browsers vs Panda3D: diferentes paradigmas de input handling
+- Solução: Manter API consistente mas adaptar implementação
+
+### **Threading**
+- JavaScript: single-thread vs Python multi-thread
+- Solução: Usar Web Workers para cálculos pesados se necessário
+
+### **Debugging**
+- Ferramentas menos robustas que Python
+- Solução: Logging detalhado + Chrome DevTools
+
+---
+
+**📋 Para documentação completa do projeto, consulte: [PROJETO-SOLAR-THREEJS.md](./PROJETO-SOLAR-THREEJS.md)**

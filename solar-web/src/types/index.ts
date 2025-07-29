@@ -22,6 +22,9 @@ export interface CelestialBodiesData {
   [key: string]: CelestialBody;
 }
 
+// Interface específica para dados astronômicos (alias para compatibilidade)
+export type AstronomicalData = CelestialBodiesData;
+
 export interface SimulationState {
   target: string;
   speed: number;
